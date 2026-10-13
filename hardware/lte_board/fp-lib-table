@@ -1,0 +1,4 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "lte_board_lcsc")(type "KiCad")(uri "${KIPRJMOD}/lte_board_lcsc.pretty")(options "")(descr "Footprints imported from LCSC/EasyEDA"))
+)
