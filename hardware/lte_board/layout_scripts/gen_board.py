@@ -7,7 +7,7 @@ import pcbnew
 from pcbnew import VECTOR2I, FromMM
 
 NETLIST, PROJ, OUT = sys.argv[1:4]
-STDLIB = "/Applications/KiCad/KiCad.app/Contents/SharedSupport/footprints"
+STDLIB = os.environ.get("KICAD9_FOOTPRINT_DIR", "/Applications/KiCad/KiCad.app/Contents/SharedSupport/footprints")
 OX, OY = 100.0, 100.0          # board origin (top-left) in sheet mm
 W, H = 63.5, 46.0              # board size, mm
 

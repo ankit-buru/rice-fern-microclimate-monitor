@@ -11,6 +11,7 @@ Scope: schematic, BOM, and a **draft PCB layout** (`lte_board.kicad_pcb`, see [P
 
 | File | What it is |
 |---|---|
+| `DESIGN.md` | Design record: requirements, decisions and rationale, power budget, layout toolchain, lessons learned, open items. **Start here if you're continuing the work.** |
 | `lte_board.kicad_pro` / `lte_board.kicad_sch` | The project and the one-sheet A2 schematic |
 | `lte_board.kicad_sym` + `sym-lib-table` | Project symbol library (all symbols are also embedded in the schematic) |
 | `fp-lib-table` + `lte_board_lcsc.pretty/` | Footprints imported from LCSC (SIM7080G, SMN-303, TS-1187A, ...), with the fixes listed under PCB layout |
@@ -174,7 +175,7 @@ KiCad doesn't compute impedance. You choose a width and gap from a calculator an
 - The SMN-303 pads were renumbered to match the symbol (1/2/3/5/6/7 = C1-C7, 8 = CD, 9-11 = shell GND), and its two locating pegs were made NPTH.
 - SW1 now uses the real TS-1187A footprint (`SW_TS-1187A`). Only one diagonal pad pair is numbered, which is correct whichever way the internal pairs are wired.
 
-`layout_scripts/` holds the Python that generates this board:
+`layout_scripts/` holds the scripts that generate this board. `pipeline.sh` runs the whole flow (see DESIGN.md §7):
 
 1. `gen_board.py`: placement.
 2. `preroute.py`: hand routes, planes and keepouts.

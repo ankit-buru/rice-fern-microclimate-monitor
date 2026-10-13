@@ -57,7 +57,7 @@ def build(net, infl_track, infl_via):
     for t in tl:
         if t.GetNetname() == net: continue
         if t.Type() == pcbnew.PCB_VIA_T:
-            (x, y), r = mm(t.GetPosition()), ToMM(t.GetWidth()) / 2
+            (x, y), r = mm(t.GetPosition()), ToMM(t.GetWidth(pcbnew.F_Cu)) / 2
             f = lambda g, e, x=x, y=y, r=r: rasterize(g, x - r - e, y - r - e, x + r + e, y + r + e, lambda px, py: (px - x) ** 2 + (py - y) ** 2 <= (r + e) ** 2)
             mark(range(4), f, infl_track, infl_via)
         else:

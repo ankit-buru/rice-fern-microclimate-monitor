@@ -32,7 +32,7 @@ def via_ok(x, y, net):
         if t.GetNetname() == net: continue
         if t.Type() == pcbnew.PCB_VIA_T:
             (vx, vy) = mm(t.GetPosition())
-            if math.hypot(vx - x, vy - y) < VR + ToMM(t.GetWidth()) / 2 + CLR: return False
+            if math.hypot(vx - x, vy - y) < VR + ToMM(t.GetWidth(pcbnew.F_Cu)) / 2 + CLR: return False
             if math.hypot(vx - x, vy - y) < DRILL / 2 + ToMM(t.GetDrillValue()) / 2 + HOLE_CLR: return False
         else:
             (ax, ay), (bx, by) = mm(t.GetStart()), mm(t.GetEnd())
@@ -70,7 +70,7 @@ for x, y in re.findall(r'\[via_dangling\][^@]*@\(([\d.]+) mm, ([\d.]+) mm\): Via
     x, y = float(x) - OX, float(y) - OY
     v = [t for t in tracks if t.Type() == pcbnew.PCB_VIA_T and math.hypot(mm(t.GetPosition())[0] - x, mm(t.GetPosition())[1] - y) < 0.01]
     if not v: continue
-    v = v[0]; net = v.GetNetname(); r = ToMM(v.GetWidth()) / 2
+    v = v[0]; net = v.GetNetname(); r = ToMM(v.GetWidth(pcbnew.F_Cu)) / 2
     ends = []
     for t in tracks:
         if t.Type() == pcbnew.PCB_VIA_T or t.GetNetname() != net: continue
