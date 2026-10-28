@@ -368,22 +368,78 @@ $K pcb render --side top --quality high -o pcb_render_top.png lte_board.kicad_pc
 
 ## 9. Open items
 
-1. **SY8089 100% duty cycle:** confirm in its datasheet (LCSC C78988). The design relies on it passing VSYS
-   through when the cell is below about 3.9 V. If not, swap in a buck with 100% duty or a load switch
-   (the modem accepts 2.7-4.8 V).
-2. **Check against datasheets** (downloads were blocked):
-   - DW01A (C351410) / FS8205A SOT-23-6 (C908265): values and pinout;
-   - MAX17048 (C2682616): VDD bypass value and EP land pattern (the footprint came from LCSC).
-3. **Impedances:** confirm the 0.35 mm RF (50 Ω) and 0.30/0.15 mm USB (90 Ω diff) with JLC's calculator, and
-   order with impedance control on that stackup.
-4. **JLC placement preview:** check part rotations (SOT-23/-6, TDFN U8, LEDs, D4) and J9 (THT: JLC THT
-   assembly or hand-solder).
-5. **Measure current** on the first build; update §5.
-6. **Antennas:** choose them and tune the LTE pi-match (C40/C41 DNP; R19 = 0R).
-7. **Enclosure, sensor choice, mounting** (M2 holes, 2.2 mm). Silkscreen tidy-up (some refs overlap).
-8. **Optional:** reduce or remove the DNP J4/J5 headers if space is needed again. J5 is 25 mm long.
+This is the master checklist; §8 remains the firmware specification and the board README
+remains the operating/ordering guide.
+
+Keep the IDs below stable when items are resolved. Record evidence and date beside each item: exact
+part/document revision and page/table for a documentation check, or board revision, conditions and results
+for a hardware test. Use **Open**, **Reported; evidence pending**, **Verified from documentation**,
+**Implemented; test pending**, **Verified on hardware**, or **Deferred (reason)**. A datasheet finding does
+not close the corresponding prototype test. Nothing is marked independently verified by this consolidation.
+
+### 9.1 Hardware review before ordering prototypes
+
+| ID | Status | Task / evidence needed | Source |
+|---|---|---|---|
+| H01 | Reported; evidence pending | **SY8089AAAC (C78988) 100% duty cycle:** owner reports support. Record the exact datasheet revision/page and low-input-voltage behavior, then update the uncertainty in §4.7 and the README block overview. If the exact part does not meet the requirement, review an alternative before changing the design. Low-battery operation still needs T01. | Original §9 item 1; §4.7; README block overview |
+| H02 | Open | **DW01A (C351410) / FS8205A (C908265):** check exact-part values, protection thresholds, SOT-23-6 pinout and actual symbol-to-pad connections against datasheets. Do not substitute the TSSOP-8 pinout. | Original §9 item 2; §4.7 |
+| H03 | Open | **MAX17048 (C2682616):** verify VDD bypass value and exposed-pad land pattern/pin connections against the exact package documentation. | Original §9 item 2 |
+| H04 | Open | **U7 ESDA6V1W5:** confirm pin 2 ground and pins 1/3/4/5 I/O against ST's datasheet; the earlier check used a pin-compatible second source. Compare with the actual footprint. | README: Check these before ordering, item 1 |
+| H05 | Open | **J8 SMN-303:** verify the already-renumbered footprint against the holder drawing: 1/2/3/5/6/7 = SIM C1/C2/C3/C5/C6/C7, 8 = card detect, 9-11 = shell ground; confirm locating pegs and inserted-card detect polarity. Hardware verification is T02. | README: ordering checks and footprint fixes |
+| H06 | Open | **Stackup and impedance:** confirm the actual fabrication stackup and calculate RF 50 Ω and USB 90 Ω differential geometry, including reference planes and adjacent ground. Current 0.35 mm RF and 0.30/0.15 mm USB width/gap are estimates. Update geometry/rules if required. | Original §9 item 3; §4.9; README impedance and original layout guidance |
+| H07 | Open | **Layout review:** inspect autorouted traces, especially MCU/U5; inspect buck placement/current loops, modem decoupling, supply paths, RF returns and USB reference continuity. Resolve the README's original 1.5-2 mm modem-supply recommendation versus the implemented 0.6 mm bus with a documented assessment. Existing connectivity checks do not close this review. | README: Before ordering; PCB layout; original layout guidance |
+| H08 | Open | **Sensors:** select temperature/humidity/UV devices; confirm 3.3 V compatibility, I2C addresses (including gauge 0x36), combined pull-ups and active/standby current. Qwiic is always powered; define sensor sleep configuration. | Original §9 item 7; §8 address-clash check; standby-current review added in discussion |
+| H09 | Open | **Low-battery supply margin:** assess the proposed ~3.3 V upload cutoff against TPS7A0233 dropout, selected sensors' supply limits, wiring/FET losses and modem burst sag. Record assumptions for T01/F05; this is a review task, not a confirmed defect. | §4.7/§8 cutoff requirement; review added in discussion |
+
+### 9.2 Manufacturing and deployment preparation
+
+| ID | Status | Task / evidence needed | Source |
+|---|---|---|---|
+| M01 | Open; repeat at order time | **Parts availability/cost:** refresh JLC stock and Basic/Extended classifications/setup fees. README stock counts are a historical 2026-10-07 snapshot. | README: Check these before ordering, items 3-4 |
+| M02 | Open; repeat at order time | **Assembly preview/options:** verify rotations/polarity, especially SOT-23/-6, TDFN U8, LEDs and D4; confirm SIM7080G MSL3/X-ray assembly requirements with the assembler. | Original §9 item 4; README ordering checks |
+| M03 | Open | **Battery connector/pack:** confirm J9 pin 1 positive against the chosen pack lead and silkscreen; choose JLC THT assembly or hand-soldering for J9. Retain external charging and the single-cell/parallel-cell architecture. | §4.7; README battery/ordering notes |
+| M04 | Open; repeat after hardware changes and before ordering | **Release checks/files:** run §7.5 ERC, DRC with schematic parity, BOM/CPL regeneration and designator cross-check; review the render and fabrication output. Preserve DNP/copper-only exclusions and order the verified impedance-controlled stackup. Record results for the actual revision being ordered; earlier clean reports are historical. | §7.5; CLAUDE.md verification rules; README ordering instructions |
+| M05 | Open | **Antennas:** select LTE and any needed GNSS antenna, connector/cable and placement; plan LTE pi-match measurement/tuning (R19 = 0R, C40/C41 DNP initially). Validate with the intended enclosure in T05. | Original §9 item 6; README RF/layout guidance |
+| M06 | Open | **Enclosure/mounting:** choose enclosure and sensor mounting; check connector/card access, antenna placement and four M2 holes (2.2 mm) with screw-head clearance. Tidy overlapping silkscreen references. | Original §9 item 7; §4.1/§6; README layout guidance |
+
+### 9.3 Firmware implementation (none yet; see §8 for pin-level requirements)
+
+| ID | Status | Task / evidence needed | Source |
+|---|---|---|---|
+| F01 | Open | **Programming/bring-up:** establish a firmware build/flash path using ROM USB DFU (BOOT0 + RESET, JP3/JP4 default); retain SWD/debug access for diagnosis. | §1/§8; README programming instructions |
+| F02 | Open | **Modem driver:** USART2 AT interface at the specified baud, optional RTS/CTS, PB1 rail control, Q1/PWRKEY timing and STATUS waits; graceful power-down before rail removal, with bounded timeouts and hard-cut recovery only for a hung modem. | §4.5/§8; README modem power sequence |
+| F03 | Open | **Cellular/cloud:** choose a 1.8 V-capable SIM/operator, configure LTE-M and intended NB-IoT fallback, and implement modem MQTT/TLS uploads to AWS IoT. Define endpoint/certificate provisioning, payload and delivery-success handling. | §1/§8; README SIM notes; provisioning/delivery details added in discussion |
+| F04 | Open | **Sampling/storage:** implement sensor acquisition, timestamps, 15-minute uploads or hourly batches, and retained readings during coverage failures. Define buffer capacity, persistence/write endurance and overflow policy within 6 KB EEPROM/128 KB flash/20 KB RAM; no external flash. | §1/§8; README batch strategy; buffer details added in discussion |
+| F05 | Open | **Battery handling:** read MAX17048 at 0x36, configure/handle ALRT on PA8 and stop uploads at the validated low-battery threshold (H09/T01); define recovery behavior. | §4.7/§8 |
+| F06 | Open | **Sleep/recovery:** implement Stop mode + RTC wake, independent watchdog, safe modem-off GPIO states without internal pulls, and sensor sleep settings. Fully power off the modem between uploads as chosen in §4.5. | §4.5/§4.6/§8; README field strategy |
+| F07 | Open | **SIM detect:** implement PB5 card detection using the verified H05 polarity and test missing/inserted-card behavior. | §8; README pin map/ordering checks |
+
+### 9.4 Prototype validation before a production batch
+
+These tasks expand the original current-measurement item into the staged validation discussed during review;
+they require physical hardware and do not imply that a prototype has already been ordered.
+
+| ID | Status | Task / evidence needed | Source |
+|---|---|---|---|
+| T01 | Open; requires prototype | **Power bring-up:** inspect assembly/shorts, start with a current-limited supply and modem disabled, then verify both supplies and modem sequencing. Sweep the intended battery range, capture startup/transmit voltage sag and test USB/battery switchover and off-state leakage; validate H09/F05 cutoff. Verify protection behavior in a controlled test setup. | Original §9 item 5; power assumptions in §4; staged tests added in discussion |
+| T02 | Open; requires prototype | **Interfaces/programming:** demonstrate DFU, sensor/gauge I2C and alert operation, SIM detection, translated UART/status behavior and modem-off isolation. If modem USB is used, validate the README jumper/power sequence. | §8; README interface/USB instructions; staged tests added in discussion |
+| T03 | Open; requires prototype | **Energy/battery life:** measure complete-board sleep current with selected sensors, plus startup/attach/TLS/publish/shutdown energy in representative coverage. Update §5 and battery sizing for the 60-day target, including temperature and batching assumptions. | §5; original §9 item 5 |
+| T04 | Open; requires prototype and firmware | **End-to-end/recovery:** demonstrate sensor-to-AWS delivery and repeated sleep/upload cycles; exercise absent SIM, unavailable network, failed uploads, watchdog/reset and low battery. Confirm retained data and bounded retries/recovery. | §4.5/§8; failure tests added in discussion |
+| T05 | Open; requires prototype | **RF/field pilot:** measure/tune the LTE match as needed and evaluate connectivity, energy and sensor operation with the selected antenna, enclosure and deployment conditions before a larger batch. | Original §9 items 5-7; field validation added in discussion |
+
+### 9.5 Documentation follow-up and optional work
+
+| ID | Status | Task / evidence needed | Source |
+|---|---|---|---|
+| D01 | Open | **Keep descriptions consistent:** as findings are checked, update the relevant §4/§5/§8 text and README instructions, record evidence here and point CLAUDE.md to this master list. Reconcile KiCad version wording, historic versus current check results, and original layout advice versus actual geometry. Add navigation links to the root README when updating the summaries. | All Markdown files; consolidation follow-up |
+| O01 | Optional; undecided | **VBUS fuse:** decide whether to add the README's suggested polyfuse; document the choice without treating it as an already-approved circuit change. Check USB source/cable current margin in the power review/test. | README: Check these before ordering, item 7 |
+| O02 | Optional; deferred unless space is needed | **DNP headers:** reduce/remove J4/J5 only if needed; J5 is 25 mm long. | Original §9 item 8 |
+| O03 | Optional; deferred unless requirements change | **Alternative modem sleep/features:** DTR/DCD/RI remain available for UART sleep/carrier/wake features. Revisit PSM only with the §4.5 RAI/TLS-resumption conditions and measured benefit. OTA updates would require revisiting §4.2; neither is part of the current firmware baseline. | §4.2/§4.5/§8; README modem strategy |
 
 ## 10. References
+
+See [DATASHEETS.md](DATASHEETS.md) for the 2026-10-24 exact-part access check, working document links,
+revision/access limits and initial findings for H01-H09. Access alone does not close the hardware review.
 
 - SIMCom, *SIM7080G Hardware Design* V1.04 (2020-09-27). Used: §3.2 power on/off, Table 8 timing,
   §3.3 UART/level shifting (>= 47k pulls), §3.4 USB (VBUS 3.5-5.25 V, 90 Ω), Table 28 abs max
