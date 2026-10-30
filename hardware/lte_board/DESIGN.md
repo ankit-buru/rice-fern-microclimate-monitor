@@ -154,8 +154,12 @@ checking its reason first. Several were explicit choices by the project owner.
 - **SIM:** the 22R series resistors R21-R23 sit vertically in the 2.6 mm gap between modem pins 15-17 and the
   SIM contacts. The SIM7080G supports **1.8 V SIM cards only**.
 - **SIM holder (XunPu SMN-303) mechanics, checked against the manufacturer drawing (Rev A):**
-  - The card inserts from the end opposite the contact row, which faces the board's bottom edge. The holder sits
-    with its opening about 0.4 mm from the edge, so the card (which ejects about 4.2 mm) can be gripped.
+  - The card inserts from the end opposite the contact row, which faces the board's bottom edge. The holder's
+    front face is **2.35 mm** in from the edge (owner's choice, 2026-10-30), so the locked card sits fully over
+    the PCB and the ejected card is still grippable. From the drawing (lock 1.50 ± 0.3 mm, eject 4.20 ± 0.5 mm
+    beyond the front face):
+    - locked card end: about 0.85 mm inside the board edge (0.55-1.15 mm);
+    - ejected card: about 1.85 mm past the edge (1.35-2.35 mm).
   - The drawing marks six areas under the contact springs "NO PATTERN AND VIA HOLE IN THIS AREA". `preroute.py`
     adds them as F.Cu keep-outs (`sim_spring_keepout_1..6`: no tracks, vias or pour), so DRC, the autorouter,
     `stitch.py` and the maze router all respect them.
@@ -222,7 +226,7 @@ The modem is off between uploads; the figures are at the 5 V/VSYS level, and the
   - **Modem + RF + SIM + buck:** right (the "BIG" group, offset +11 mm).
   - **Battery block:** bottom-left.
   - **OR-ing (D4/Q4/R34):** between SW2 and the SIM holder. **LDO (U3/C4/C5):** bottom-right corner, by the buck.
-  - **SIM holder J8:** card opening about 0.4 mm from the bottom edge. Nothing may be placed in front of it (§7.4, lesson 12).
+  - **SIM holder J8:** front face 2.35 mm from the bottom edge (§4.9). Nothing may be placed in front of it (§7.4, lesson 12).
   - **LEDs:** bottom-middle.
   - **J4/J5/SW2:** bottom edge.
 

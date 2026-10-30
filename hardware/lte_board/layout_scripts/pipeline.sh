@@ -41,6 +41,8 @@ clean_dangling() {   # drop vias/stubs left by the autorouter, one layer of the 
   done
 }
 
+# pcbnew.SaveBoard() resets the .kicad_pro to defaults; keep the saved one (KiCad GUI settings) and restore it at the end
+cp "$PRO" "$WORK/project.kicad_pro.orig"
 "$KCLI" sch export netlist --format kicadsexpr -o "$WORK/net.net" "$SCH" > /dev/null 2>&1 || { echo "netlist export failed"; exit 1; }
 
 best=999999
@@ -80,6 +82,8 @@ kpy "$HERE/final_fixes.py" "$BRD" "$WORK/drc.rpt"                  # bridge stra
 kpy "$HERE/silk_marks.py" "$BRD"
 drc > /dev/null; clean_dangling
 echo "== final DRC"; drc; grep -E "^\[" "$WORK/drc.rpt" | sort | uniq -c
+
+cp "$WORK/project.kicad_pro.orig" "$PRO"; rules        # original project settings + our rules (minimal diff)
 
 # JLCPCB files (BOM from the schematic, CPL from KiCad's position file; script cross-checks them)
 "$KCLI" pcb export pos --format csv --units mm --side front --exclude-dnp -o "$WORK/pos.csv" "$BRD" > /dev/null 2>&1
