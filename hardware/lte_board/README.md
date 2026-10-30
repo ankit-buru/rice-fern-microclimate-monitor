@@ -44,7 +44,8 @@ Scope: schematic, BOM, and a **draft PCB layout** (`lte_board.kicad_pcb`, see [P
     - bridge **JP1**, which feeds 5V to the modem's USB_VBUS (100k pull-down R25 when open). Keep it open in normal use: the modem can't sleep while USB_VBUS is present.
     - make sure the modem is powered before its USB lines see a cable (SIMCom: no voltage on any pin while VBAT is off). Either have firmware turn it on, or bridge **JP5**, which forces the 3.8V rail on.
     - start the modem with a PWRKEY press: firmware does it via PB0, or by hand, short **TP2 (PWRKEY)** to **TP4 (GND)** for about 1-2 s. Don't leave PWRKEY grounded, because the modem resets after 12.6 s.
-- **SIM:** nano-SIM push-push holder with card detect (**R24 = 1M** pull-up; at 10k it drew about 330 uA all the time with a card inserted), 22R series resistors, 33pF caps and an ESD array.
+- **SIM:** nano-SIM push-push holder (XunPu SMN-303), 22R series resistors, 33pF caps and an ESD array. The card slides in from the **bottom edge** of the board; keep the strip in front of the slot clear.
+  - **Card detect:** per the SMN-303 drawing, the holder's switch **shorts CD to GND with no card and opens when a card is inserted**. With **R24 = 1M** pulling up to 3.3V, **PB5 reads high = card present**. At the original 10k, R24 drew about 330 uA whenever no card was inserted.
 - **RF:** LTE antenna on U.FL J6, through an R19/C40/C41 pi network (0R + DNP, to tune for your antenna). GNSS antenna on U.FL J7.
 - **Expansion:** Qwiic J3 (I2C1, 4.7k pull-ups, 3.3V). J4 debug UART + BOOT0 and J5 spare GPIO are 2.54mm headers, DNP (hand-solder if wanted).
 
@@ -64,7 +65,7 @@ Scope: schematic, BOM, and a **draft PCB layout** (`lte_board.kicad_pcb`, see [P
 | PB6 / PB7 | I2C1 SCL / SDA | Qwiic J3 (sensors) |
 | PA9 / PA10 | USART1 TX / RX | debug header J4 |
 | PB4 | GPIO out | user LED D2 |
-| PB5 | GPIO in | SIM card detect |
+| PB5 | GPIO in | SIM card detect (high = card present) |
 | PA8 | GPIO in / EXTI | MAX17048 fuel-gauge alert (low battery / SOC change), R37 pull-up |
 | PA13 / PA14 | SWDIO / SWCLK | SWD header J2 |
 | PA4-PA7, PB8, PB9, PB10, PB11 | spare (ADC, SPI1, I2C1 alt, I2C2) | expansion J5 |
@@ -106,7 +107,7 @@ or Footprint Assignment.
 ## Check these before ordering
 
 1. **U7 ESDA6V1W5 pinout.** Pin 2 is the common ground and pins 1/3/4/5 are I/O. This was checked against a pin-compatible second-source datasheet (ElecSuper), not ST's own, so confirm once against ST's datasheet.
-2. **J8 SIM holder pad numbers.** After importing the SMN-303 footprint, check that its pad numbers match the symbol: 1 = C1 VCC, 2 = C2 RST, 3 = C3 CLK, 5 = C5 GND, 6 = C6 VPP, 7 = C7 I/O, 8 = CD. Also check the card-detect polarity; firmware currently expects CD pulled low by the inserted card.
+2. **J8 SIM holder pad numbers.** After importing the SMN-303 footprint, check that its pad numbers match the symbol: 1 = C1 VCC, 2 = C2 RST, 3 = C3 CLK, 5 = C5 GND, 6 = C6 VPP, 7 = C7 I/O, 8 = CD. Card-detect polarity has been checked against the drawing: CD is shorted to GND with no card and open with a card, so PB5 is high when a card is present.
 3. **Stock (JLCPCB, checked 2026-10-07):** STM32L072CBT6 C465977 (2,927), SIM7080G C2943992 (729), TXS0108EPWR C17206 (52k), TPS7A0233PDBVR C2887324 (8,010). Re-check before ordering.
 4. **Basic vs Extended:** confirm in JLCPCB's parts search. Every Extended part adds a small setup fee.
 5. **SIM7080G assembly:** JLCPCB lists it as MSL3 with X-ray inspection required, so pick an assembly option that includes that.
@@ -131,7 +132,7 @@ or Footprint Assignment.
   - Nano-SIM below the modem; the card loads from the bottom edge. The 22R SIM resistors sit in the gap under modem pins 15-17.
   - USB-C and Qwiic on the left edge; the reset button is on the top edge; the buck is in the bottom-right corner.
   - Status LEDs are in the bottom middle, with the BOOT0 button SW2 below them.
-  - **Battery block** (bottom left): J9, Q3, U9/Q5 protector, U8 fuel gauge. **USB/battery OR-ing** (D4, Q4) and the LDO U3 sit under the SIM holder, next to the buck.
+  - **Battery block** (bottom left): J9, Q3, U9/Q5 protector, U8 fuel gauge. **USB/battery OR-ing** (D4, Q4, R34) sits between SW2 and the SIM holder; the LDO U3 (with C4/C5) is in the bottom-right corner by the buck. The SIM holder's opening is at the bottom edge, and six top-layer keep-outs (from the SMN-303 drawing's "no pattern and via hole" areas) keep copper and vias out from under its contact springs.
   - **USB select jumpers JP4 (D-) / JP3 (D+)** sit just right of the USB ESD chip U1 (pad 1 = MCU side, pad 3 = modem side). **JP5** (modem power override) is under the MCU. **TP4** (GND) is next to **TP2** (PWRKEY), for starting the modem by hand.
 - **Hand-routed:**
   - LTE and GNSS RF feeds (0.35 mm).

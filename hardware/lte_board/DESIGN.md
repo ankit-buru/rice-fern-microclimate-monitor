@@ -141,7 +141,7 @@ checking its reason first. Several were explicit choices by the project owner.
   Firmware should stop uploading at about 3.3 V; the DW01A is only the hardware backstop.
 - **Always-on loads fixed in rev 0.3:**
   - D1 (red LED) now runs from USB +5V. It was 1k from +3V3: about 6.5 mW, more than all the uploads combined.
-  - R24 (SIM card-detect pull-up) is now 1 MΩ. At 10k it drew 330 µA with a card inserted.
+  - R24 (SIM card-detect pull-up) is now 1 MΩ. At 10k it drew 330 µA whenever **no** card was inserted (the holder's switch shorts CD to GND with no card; see §4.9).
 
 ### 4.8 Regulators
 - **3.3 V: TPS7A0233PDBVR** (25 nA Iq, SOT-23-5, same pinout as the ME6211 it replaced, which drew about 40 µA).
@@ -153,6 +153,13 @@ checking its reason first. Several were explicit choices by the project owner.
   under the RF half.
 - **SIM:** the 22R series resistors R21-R23 sit vertically in the 2.6 mm gap between modem pins 15-17 and the
   SIM contacts. The SIM7080G supports **1.8 V SIM cards only**.
+- **SIM holder (XunPu SMN-303) mechanics, checked against the manufacturer drawing (Rev A):**
+  - The card inserts from the end opposite the contact row, which faces the board's bottom edge. The holder sits
+    with its opening about 0.4 mm from the edge, so the card (which ejects about 4.2 mm) can be gripped.
+  - The drawing marks six areas under the contact springs "NO PATTERN AND VIA HOLE IN THIS AREA". `preroute.py`
+    adds them as F.Cu keep-outs (`sim_spring_keepout_1..6`: no tracks, vias or pour), so DRC, the autorouter,
+    `stitch.py` and the maze router all respect them.
+  - Card detect: the CD switch is closed to GND with no card and open with a card inserted.
 - **USB to the modem:** a coupled pair on B.Cu, 0.30 mm / 0.15 mm gap (my estimate for ~90 Ω on JLC04161H-7628;
   **verify**). In2 has a track keep-out under it. The MCU side of the jumpers is plain autorouted (USB FS).
 
@@ -214,7 +221,8 @@ The modem is off between uploads; the figures are at the 5 V/VSYS level, and the
   - **TXS0108 + modem-control transistors:** centre (the "MID" group, offset +5 mm).
   - **Modem + RF + SIM + buck:** right (the "BIG" group, offset +11 mm).
   - **Battery block:** bottom-left.
-  - **OR-ing + LDO:** under the SIM holder.
+  - **OR-ing (D4/Q4/R34):** between SW2 and the SIM holder. **LDO (U3/C4/C5):** bottom-right corner, by the buck.
+  - **SIM holder J8:** card opening about 0.4 mm from the bottom edge. Nothing may be placed in front of it (§7.4, lesson 12).
   - **LEDs:** bottom-middle.
   - **J4/J5/SW2:** bottom edge.
 
@@ -334,6 +342,10 @@ The committed board is a hand-finished, fully clean run, so don't overwrite it u
 11. **JLCPCB "designators don't exist in the CPL file":** non-parts (jumpers, test pads, DNP) were in the BOM.
     Keep them `in_bom no`. The Fabrication Toolkit plugin needs `"EXCLUDE DNP": true` (set in
     `fabrication-toolkit-options.json`). `make_jlc.py` is the source of truth.
+12. **DRC can't see mechanical access.** In rev 0.3 the OR-ing parts and LDO were placed in the "free" strip in
+    front of the SIM holder's card slot, blocking insertion, and copper and vias ran under the holder's contact
+    springs. Both were fixed on branch `hardware/sim-holder-fix`. Before moving parts, check every connector's,
+    card's and button's access path, and any "no copper" areas, against the part's mechanical drawing.
 
 ### 7.5 Verification checklist (every change)
 
@@ -364,7 +376,7 @@ $K pcb render --side top --quality high -o pcb_render_top.png lte_board.kicad_pc
   - stop uploading around 3.3 V/cell.
 - **Data:** store readings when coverage fails. The L072CB has 6 KB of EEPROM, 128 KB of flash and 20 KB of RAM; no external
   flash (declined by the owner).
-- **SIM:** card detect on PB5 (pulled up by R24 = 1M; the inserted card pulls it low). SIM must be 1.8 V-capable.
+- **SIM:** card detect on PB5, pulled up by R24 = 1M. The holder's switch shorts CD to GND with **no** card and opens with a card, so **PB5 high = card present** (SMN-303 drawing). SIM must be 1.8 V-capable.
 
 ## 9. Open items
 
@@ -385,7 +397,7 @@ not close the corresponding prototype test. Nothing is marked independently veri
 | H02 | Open | **DW01A (C351410) / FS8205A (C908265):** check exact-part values, protection thresholds, SOT-23-6 pinout and actual symbol-to-pad connections against datasheets. Do not substitute the TSSOP-8 pinout. | Original §9 item 2; §4.7 |
 | H03 | Open | **MAX17048 (C2682616):** verify VDD bypass value and exposed-pad land pattern/pin connections against the exact package documentation. | Original §9 item 2 |
 | H04 | Open | **U7 ESDA6V1W5:** confirm pin 2 ground and pins 1/3/4/5 I/O against ST's datasheet; the earlier check used a pin-compatible second source. Compare with the actual footprint. | README: Check these before ordering, item 1 |
-| H05 | Open | **J8 SMN-303:** verify the already-renumbered footprint against the holder drawing: 1/2/3/5/6/7 = SIM C1/C2/C3/C5/C6/C7, 8 = card detect, 9-11 = shell ground; confirm locating pegs and inserted-card detect polarity. Hardware verification is T02. | README: ordering checks and footprint fixes |
+| H05 | Verified from documentation (2026-10-30); hardware test pending (T02) | **J8 SMN-303:** Evidence: XunPu SMN-303 drawing (Rev A, linked in DATASHEETS.md). Contact order C3/C7/C2/C6/C1/C5/CD, 2 × 6.50 mm and 12.00 mm tab spacing and the two Ø0.75 mm pegs match the footprint; CD is normally shorted to GND and opens with a card (PB5 high = card present); card inserts from the bottom edge; the drawing's six no-copper areas are now keep-outs. Minor: the drawing's contact row sits about 0.14 mm further from the tabs than the LCSC footprint's pads, which is well inside the pads' length. Original task: verify the already-renumbered footprint against the holder drawing: 1/2/3/5/6/7 = SIM C1/C2/C3/C5/C6/C7, 8 = card detect, 9-11 = shell ground; confirm locating pegs and inserted-card detect polarity. Hardware verification is T02. | README: ordering checks and footprint fixes |
 | H06 | Open | **Stackup and impedance:** confirm the actual fabrication stackup and calculate RF 50 Ω and USB 90 Ω differential geometry, including reference planes and adjacent ground. Current 0.35 mm RF and 0.30/0.15 mm USB width/gap are estimates. Update geometry/rules if required. | Original §9 item 3; §4.9; README impedance and original layout guidance |
 | H07 | Open | **Layout review:** inspect autorouted traces, especially MCU/U5; inspect buck placement/current loops, modem decoupling, supply paths, RF returns and USB reference continuity. Resolve the README's original 1.5-2 mm modem-supply recommendation versus the implemented 0.6 mm bus with a documented assessment. Existing connectivity checks do not close this review. | README: Before ordering; PCB layout; original layout guidance |
 | H08 | Open | **Sensors:** select temperature/humidity/UV devices; confirm 3.3 V compatibility, I2C addresses (including gauge 0x36), combined pull-ups and active/standby current. Qwiic is always powered; define sensor sleep configuration. | Original §9 item 7; §8 address-clash check; standby-current review added in discussion |

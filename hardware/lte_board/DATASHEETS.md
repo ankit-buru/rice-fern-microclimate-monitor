@@ -45,6 +45,10 @@ against the exact BOM parts during H07/H09; opening the IC datasheets does not c
 - **H03:** MAX17048 Rev. 7 p.6 specifies a **0.1 uF** VDD bypass and EP connection to GND. The current
   schematic/BOM uses **C44 = 1 uF**. This is a documented difference to evaluate, not proof that 1 uF is
   unsuitable. The exposed-pad land pattern remains a separate check.
+- **H05 (checked 2026-10-30):** the SMN-303 drawing's top view shows the card inserted from the end opposite the
+  contact row, with a 4.20 mm eject position. Its card-detect diagram reads "CD-GND: normal SHORT, inserting card
+  OPEN", the reverse of the earlier project notes. Its recommended layout marks six "no pattern and via hole" areas
+  under the springs. All three now drive the layout (branch `hardware/sim-holder-fix`).
 - **Modem source revision:** the project cites V1.04, the accessible Waveshare PDF is V1.03, and SIMCom's
   product page lists V1.05. Pin/sequence/RF checks must state the document revision used.
 

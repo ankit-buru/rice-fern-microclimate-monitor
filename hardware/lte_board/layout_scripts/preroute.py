@@ -123,9 +123,25 @@ track([vb, (8.9, vb[1]), (8.9, yv)], "+5V", w=0.5)
 via_n(8.9, yv, "+5V")
 # rev 0.3: the highway now ends at the Schottky D4 (USB -> VSYS); VSYS feeds the buck and the LDO
 d4a = pos("D4", "2")
-track([(8.9, yv), (8.9, 30.6), (43.4, 30.6), (43.4, 42.8)], "+5V", w=0.5, layer=pcbnew.B_Cu)
-via_n(43.4, 42.8, "+5V")
-track([(43.4, 42.8), (d4a[0], 42.8), d4a], "+5V", w=0.5)
+yd = d4a[1] - 1.75                                   # via just above D4's anode (D4 sits left of the SIM holder)
+track([(8.9, yv), (8.9, 30.6), (d4a[0], 30.6), (d4a[0], yd)], "+5V", w=0.5, layer=pcbnew.B_Cu)
+via_n(d4a[0], yd, "+5V")
+track([(d4a[0], yd), d4a], "+5V", w=0.5)
+
+# ---- SIM holder J8 (XunPu SMN-303): manufacturer drawing marks "NO PATTERN AND VIA HOLE IN THIS AREA" under
+# the contact springs. Six F.Cu keep-outs (no tracks, vias or pour), footprint coords, 0.1 mm margin.
+j8 = b.FindFootprintByReference("J8"); jx, jy = ToMM(j8.GetPosition().x) - OX, ToMM(j8.GetPosition().y) - OY
+assert abs(j8.GetOrientationDegrees()) < 0.01, "SIM keep-outs assume J8 at 0 deg"
+for k, (cx, cy, w, h) in enumerate([(-3.71, -0.25, 1.30, 2.75), (-1.17, -0.25, 1.30, 2.75), (1.37, -0.25, 1.30, 2.75),
+                                     (-3.72, 5.42, 1.85, 3.50), (-1.22, 5.42, 1.85, 3.50), (1.28, 5.42, 1.85, 3.50)]):
+    kz = pcbnew.ZONE(b); kz.SetIsRuleArea(True); kz.SetZoneName(f"sim_spring_keepout_{k + 1}")
+    ls = pcbnew.LSET(); ls.AddLayer(pcbnew.F_Cu); kz.SetLayerSet(ls)
+    kz.SetDoNotAllowTracks(True); kz.SetDoNotAllowVias(True); kz.SetDoNotAllowCopperPour(True)
+    kz.SetDoNotAllowPads(False); kz.SetDoNotAllowFootprints(False)
+    ol = kz.Outline(); ol.NewOutline()
+    for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
+        ol.Append(FromMM(OX + jx + cx + sx * (w / 2 + 0.1)), FromMM(OY + jy + cy + sy * (h / 2 + 0.1)))
+    b.Add(kz)
 track([u2, (u2[0], 33.6), pos("C1", "1")], "/VSYS", w=0.5)
 
 # ---- modem control pins 39-42 (top edge): escape vias straight above each pad
