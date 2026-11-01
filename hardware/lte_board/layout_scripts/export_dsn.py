@@ -13,3 +13,9 @@ if not any(z.GetIsRuleArea() and z.GetZoneName() == "In1_RF_keepout" for z in b.
     b.Add(z)
 pcbnew.SaveBoard(sys.argv[1], b)
 print("dsn", pcbnew.ExportSpecctraDSN(b, sys.argv[2]))
+# forbid vias inside SMD pads (solder wicks into an unfilled via-in-pad)
+d = open(sys.argv[2]).read()
+if "via_at_smd" not in d:
+    d = d.replace("  (structure\n", "  (structure\n    (control (via_at_smd off))\n", 1)
+    assert "via_at_smd" in d, "DSN has no (structure section"
+    open(sys.argv[2], "w").write(d)

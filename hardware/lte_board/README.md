@@ -30,7 +30,7 @@ Scope: schematic, BOM, and a **draft PCB layout** (`lte_board.kicad_pcb`, see [P
   - **U2 SY8089 buck** makes +3V8 (3.93V) for modem VBAT from VSYS. Below about 3.9V on the cell it runs at maximum duty and passes VSYS through (confirm 100% duty-cycle support in the SY8089 datasheet). The modem accepts 2.7-4.8V. Its EN pin is driven by MCU **PB1**, so firmware can hard power-cycle the modem; R6 keeps the modem off until firmware enables it.
   - **U3 TPS7A0233 LDO** makes +3V3 from VSYS for the MCU, level shifter, LEDs and sensors. Its 25 nA quiescent current keeps it out of the sleep budget (the ME6211 it replaced drew about 40 uA).
   - The MCU drives the buck EN through **R28 (1k)**, so **JP5** can force the 3.8V rail on without fighting a driven pin.
-- **MCU:** STM32L072CBT6, with crystal-less USB FS. It can be programmed over **USB with ST's built-in DFU bootloader** (hold **SW2 BOOT0**, tap **SW1 RESET**, then flash with STM32CubeProgrammer or `dfu-util`) or over SWD (J2, 10-pin 1.27mm Cortex header). R10 pulls BOOT0 low for normal boot.
+- **MCU:** STM32L072CBT6, with crystal-less USB FS and a **32.768 kHz crystal Y1** (C54/C55 = 10 pF) on PC14/PC15 for an accurate RTC. It can be programmed over **USB with ST's built-in DFU bootloader** (hold **SW2 BOOT0**, tap **SW1 RESET**, then flash with STM32CubeProgrammer or `dfu-util`) or over SWD (J2, 10-pin 1.27mm Cortex header). R10 pulls BOOT0 low for normal boot.
 - **Level shifting:** the modem's logic is **1.8V** (2.1V absolute max). U5 TXS0108E translates all 8 UART/status lines between 3.3V and the modem's VDD_EXT (1.8V). OE is tied to VDD_EXT, so the shifter goes Hi-Z whenever the modem is off and nothing back-powers it.
   - **R29/R30/R31** (100k, pull-up) on RXD, DCD and CTS, and **R32** (100k, pull-down) on RI, hold the MCU-side lines in a safe state while the shifter is Hi-Z. SIMCom requires at least 47k on these lines with a shifter IC (V1.04 section 3.3); don't use the STM32's internal pulls (about 40k) instead.
 - **Modem:** SIM7080G.
@@ -46,7 +46,15 @@ Scope: schematic, BOM, and a **draft PCB layout** (`lte_board.kicad_pcb`, see [P
     - start the modem with a PWRKEY press: firmware does it via PB0, or by hand, short **TP2 (PWRKEY)** to **TP4 (GND)** for about 1-2 s. Don't leave PWRKEY grounded, because the modem resets after 12.6 s.
 - **SIM:** nano-SIM push-push holder (XunPu SMN-303), 22R series resistors, 33pF caps and an ESD array. The card slides in from the **bottom edge** of the board; keep the strip in front of the slot clear.
   - **Card detect:** per the SMN-303 drawing, the holder's switch **shorts CD to GND with no card and opens when a card is inserted**. With **R24 = 1M** pulling up to 3.3V, **PB5 reads high = card present**. At the original 10k, R24 drew about 330 uA whenever no card was inserted.
-- **RF:** LTE antenna on U.FL J6, through an R19/C40/C41 pi network (0R + DNP, to tune for your antenna). GNSS antenna on U.FL J7.
+- **RF:**
+  - **LTE** works out of the box on **U.FL J6** with any 50 Ω antenna. The R19/C40/C41 pi network is fitted as
+    0R + two empty pads, only for tuning later. C61 (100 pF series) and D6 (TVS) protect the port from ESD.
+    For an SMA antenna instead: hand-solder the optional **SMA J10** (Amphenol 132322, right edge) and fit
+    **R40 = 0R** (LCSC C17168).
+  - **GNSS** on **SMA J7** (Amphenol 132322, top edge, hand-soldered; LCSC C42394535). Use an **active** GNSS
+    antenna (3.3 V, ≤ 25 mA) with a standard SMA plug, not RP-SMA. The board feeds it 3.3 V through a bias tee
+    (L2 47 nH + R38 10R, C56 100 pF DC block), switched by U10 TPS22945 (current-limited): **PA15 high = antenna
+    on**, **PB3 low = over-current**. GNSS is optional: LTE works without it, and the two can't run at the same time.
 - **Expansion:** Qwiic J3 (I2C1, 4.7k pull-ups, 3.3V). J4 debug UART + BOOT0 and J5 spare GPIO are 2.54mm headers, DNP (hand-solder if wanted).
 
 ## MCU pin map
@@ -68,8 +76,11 @@ Scope: schematic, BOM, and a **draft PCB layout** (`lte_board.kicad_pcb`, see [P
 | PB5 | GPIO in | SIM card detect (high = card present) |
 | PA8 | GPIO in / EXTI | MAX17048 fuel-gauge alert (low battery / SOC change), R37 pull-up |
 | PA13 / PA14 | SWDIO / SWCLK | SWD header J2 |
+| PA15 | GPIO out | GNSS antenna power (U10 ON; R39 pull-down = off) |
+| PB3 | GPIO in, pull-up | GNSS antenna over-current flag (U10 OC, open drain, low = fault) |
 | PA4-PA7, PB8, PB9, PB10, PB11 | spare (ADC, SPI1, I2C1 alt, I2C2) | expansion J5 |
 | BOOT0 | boot select | SW2 to +3V3, R10 pull-down, J4 pin 5 |
+| PC14 / PC15 | LSE (OSC32_IN / OUT) | 32.768 kHz crystal Y1, 10 pF C54/C55 |
 
 ## Modem power-on sequence (firmware)
 
@@ -97,8 +108,12 @@ pip install easyeda2kicad
 easyeda2kicad --footprint --3d --lcsc_id=C2943992 --output ./lte_board_lcsc   # U6 SIM7080G
 easyeda2kicad --footprint --3d --lcsc_id=C266888  --output ./lte_board_lcsc   # J8 SMN-303 nano-SIM
 easyeda2kicad --footprint --3d --lcsc_id=C318884  --output ./lte_board_lcsc   # SW1 (optional, replaces TL3342 stand-in)
-easyeda2kicad --footprint --3d --lcsc_id=C279948  --output ./lte_board_lcsc   # L1 (optional, replaces MAPI-4030 stand-in)
+easyeda2kicad --footprint --3d --lcsc_id=C279948  --output ./lte_board_lcsc   # L1 3D model (the land is L_Sunlord_SWPA4030S, per Sunlord's spec)
 easyeda2kicad --footprint --3d --lcsc_id=C145956  --output ./lte_board_lcsc   # J3 (optional, check vs JST SH footprint)
+easyeda2kicad --footprint --3d --lcsc_id=C47507   --output ./lte_board_lcsc   # U10 TPS22945 (courtyard redrawn to pads + 0.25)
+easyeda2kicad --footprint --3d --lcsc_id=C3039401 --output ./lte_board_lcsc   # D5 WE05DGCF-B (courtyard redrawn)
+easyeda2kicad --footprint --3d --lcsc_id=C535146  --output ./lte_board_lcsc   # D6 ESD103-B1-02EL (courtyard redrawn)
+# J7/J10 SMA_Amphenol_132322_EdgeMount is hand-made from Amphenol drawing 132322 rev D (no EasyEDA footprint)
 ```
 
 Then point each part's Footprint field at the imported footprint. Use Tools → Edit Symbol Fields,
@@ -128,7 +143,7 @@ or Footprint Assignment.
   - B.Cu: signals + GND pour.
   - GND stitching vias everywhere.
 - **Placement:**
-  - Modem top right, LTE U.FL (J6) on the right edge, GNSS U.FL (J7) on the top edge.
+  - Modem top right. LTE U.FL J6 and the optional SMA J10 on the right edge; GNSS SMA J7 and its bias tee on the top edge.
   - Nano-SIM below the modem; the card loads from the bottom edge. The 22R SIM resistors sit in the gap under modem pins 15-17.
   - USB-C and Qwiic on the left edge; the reset button is on the top edge; the buck is in the bottom-right corner.
   - Status LEDs are in the bottom middle, with the BOOT0 button SW2 below them.
@@ -161,6 +176,7 @@ KiCad doesn't compute impedance. You choose a width and gap from a calculator an
 ### Ordering at JLCPCB (BOM and CPL)
 
 - Upload `bom_jlcpcb.csv` and `cpl_jlcpcb.csv`. Both are generated from the design (`layout_scripts/make_jlc.py`) and cross-checked to contain exactly the same designators. Every BOM line has an LCSC number.
+- **No vias in pads:** the layout scripts keep every via off SMD pads (`check_via_in_pad.py` reports 0), so JLC's via-in-pad filling option isn't needed.
 - These are **deliberately not in either file**, because they aren't parts to place:
   - JP1-JP5 and TP1-TP4: copper-only solder jumpers and test pads;
   - C40/C41 and J4/J5: do-not-populate;
@@ -168,13 +184,14 @@ KiCad doesn't compute impedance. You choose a width and gap from a calculator an
 
   If you export a BOM yourself from KiCad, keep "exclude DNP" on. Otherwise JLC warns that those designators "don't exist in the CPL file" (harmless, but confusing).
 - **J9 is through-hole.** Either enable JLC's THT assembly for it or leave it out of the order and hand-solder it (2 pins).
-- Check rotations in JLC's placement preview, especially SOT-23/SOT-23-6, the TDFN U8, and polarized parts (LEDs, D4). KiCad and JLC sometimes disagree on a part's zero orientation.
+- `cpl_jlcpcb.csv` already includes JLC's rotation and origin corrections (`JLC_CORR` in `make_jlc.py`, fitted against each part's LCSC footprint). Still check pin 1 and polarity in JLC's placement preview, especially J9 (+ = pin 1), SOT-23/SOT-23-6, and polarized parts (LEDs, D4). KiCad and JLC sometimes disagree on a part's zero orientation.
 
 **Footprint fixes made during layout (in `lte_board_lcsc.pretty/`):**
 
 - The imported SIM7080G footprint was renamed to `SIM7080G` so the schematic link resolves.
 - The SMN-303 pads were renumbered to match the symbol (1/2/3/5/6/7 = C1-C7, 8 = CD, 9-11 = shell GND), and its two locating pegs were made NPTH.
 - SW1 now uses the real TS-1187A footprint (`SW_TS-1187A`). Only one diagonal pad pair is numbered, which is correct whichever way the internal pairs are wired.
+- L1 uses `L_Sunlord_SWPA4030S`: Sunlord's recommended land (1.10 × 3.70 mm pads, 1.90 mm gap; spec Rev. 11, Table 4-1). It replaces the Würth MAPI-4030 stand-in, whose pads barely reached the SWPA4030S terminals.
 
 `layout_scripts/` holds the scripts that generate this board. `pipeline.sh` runs the whole flow (see DESIGN.md §7):
 
@@ -183,7 +200,7 @@ KiCad doesn't compute impedance. You choose a width and gap from a calculator an
 3. `export_dsn.py`: export for Freerouting.
 4. `postroute.py`, `stitch.py`, `fixup.py`, `drop_dangling.py`, `hole_keepouts.py` and `maze_route.py`: import, pours, stitching, cleanup and finishing leftover connections.
 5. `sch_rev02.py`: the schematic edits that turned rev 0.1 into rev 0.2 (already applied; kept for reference).
-6. `sch_rev03.py`: the rev 0.3 battery/fuel-gauge/VSYS schematic edits (already applied).
+6. `sch_rev03.py`: the rev 0.3 battery/fuel-gauge/VSYS schematic edits (already applied). `sch_rev04.py`: the LSE crystal and L1 land (already applied).
 7. `final_fixes.py`, `silk_marks.py`: last clean-ups (bridging stray vias, GND island vias, J9 polarity marks).
 8. `make_jlc.py`: writes `bom_jlcpcb.csv` + `cpl_jlcpcb.csv` from the netlist and KiCad's position file, and checks they list the same parts.
 

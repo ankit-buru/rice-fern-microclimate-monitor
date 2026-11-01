@@ -11,6 +11,7 @@ from pcbnew import FromMM, ToMM, VECTOR2I
 BRD, RPT = sys.argv[1:3]
 OX, OY, W, H = 100.0, 100.0, 63.5, 46.0
 VR, DRILL, CLR, HOLE_CLR, EDGE = 0.25, 0.3, 0.17, 0.27, 0.35
+PAD_VIA_GAP = 0.1
 b = pcbnew.LoadBoard(BRD)
 P = lambda x, y: VECTOR2I(FromMM(OX + x), FromMM(OY + y))
 mm = lambda v: (ToMM(v.x) - OX, ToMM(v.y) - OY)
@@ -41,7 +42,10 @@ def via_ok(x, y, net):
         if p.GetDrillSize().x > 0:
             (hx, hy) = mm(p.GetPosition())
             if math.hypot(hx - x, hy - y) < DRILL / 2 + ToMM(max(p.GetDrillSize().x, p.GetDrillSize().y)) / 2 + HOLE_CLR: return False
-        if p.GetNetname() == net and net != "": continue
+        if p.GetNetname() == net and net != "":
+            if p.GetAttribute() == pcbnew.PAD_ATTRIB_SMD and p.GetEffectivePolygon(pcbnew.F_Cu, pcbnew.ERROR_INSIDE).Collide(pt, FromMM(VR + PAD_VIA_GAP)):
+                return False     # no via-in-pad, even on its own net
+            continue
         for L in LAYERS:
             if p.IsOnLayer(L) and p.GetEffectivePolygon(L, pcbnew.ERROR_INSIDE).Collide(pt, FromMM(VR + CLR)): return False
     for z in rules:

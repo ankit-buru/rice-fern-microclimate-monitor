@@ -11,6 +11,7 @@ BRD, NETS = sys.argv[1], sys.argv[2:]
 OX, OY, W, H = 100.0, 100.0, 63.5, 46.0
 G = 0.1                                   # grid pitch, mm
 TW, CLR, VR = 0.15, 0.16, 0.25            # track width, clearance (+margin), via pad radius
+PAD_VIA_GAP = 0.1                         # via edge to any SMD pad, even same-net (no via-in-pad)
 EDGE = 0.3
 LAYERS = [pcbnew.F_Cu, pcbnew.In1_Cu, pcbnew.In2_Cu, pcbnew.B_Cu]
 NX, NY = int(W / G) + 1, int(H / G) + 1
@@ -66,8 +67,12 @@ def build(net, infl_track, infl_via):
             f = lambda g, e, ax=ax, ay=ay, bx=bx, by=by, r=r: rasterize(g, min(ax, bx) - r - e, min(ay, by) - r - e, max(ax, bx) + r + e, max(ay, by) + r + e, lambda px, py: seg_d2(px, py, ax, ay, bx, by) <= (r + e) ** 2)
             f(blk[li], infl_track); f(vblk, infl_via)
     for p in pads:
-        if p.GetNetname() == net and p.GetNetname() != "": continue
         bb = p.GetBoundingBox(); x0, y0 = mm(bb.GetOrigin()); x1, y1 = mm(bb.GetEnd())
+        if p.GetNetname() == net and p.GetNetname() != "":
+            if p.GetAttribute() == pcbnew.PAD_ATTRIB_SMD:      # no via in (or touching) a same-net SMD pad
+                e = VR + PAD_VIA_GAP
+                rasterize(vblk, x0 - e, y0 - e, x1 + e, y1 + e, lambda px, py: x0 - e <= px <= x1 + e and y0 - e <= py <= y1 + e)
+            continue
         th = p.GetAttribute() in (pcbnew.PAD_ATTRIB_PTH, pcbnew.PAD_ATTRIB_NPTH)
         lays = range(4) if th else [LAYERS.index(l) for l in (pcbnew.F_Cu, pcbnew.B_Cu) if p.IsOnLayer(l)]
         f = lambda g, e, x0=x0, y0=y0, x1=x1, y1=y1: rasterize(g, x0 - e, y0 - e, x1 + e, y1 + e, lambda px, py: x0 - e <= px <= x1 + e and y0 - e <= py <= y1 + e)

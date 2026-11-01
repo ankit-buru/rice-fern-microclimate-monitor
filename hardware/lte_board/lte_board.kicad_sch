@@ -7665,6 +7665,483 @@
 			)
 			(embedded_fonts no)
 		)
+		(symbol "lte_board:Crystal"
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 1.016)
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "Y"
+				(at 0 3.81 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "Crystal"
+				(at 0 -3.81 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "~"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Two pin crystal"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "quartz ceramic resonator oscillator"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_fp_filters" "Crystal*"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "Crystal_0_1"
+				(polyline
+					(pts
+						(xy -2.54 0) (xy -1.905 0)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -1.905 -1.27) (xy -1.905 1.27)
+					)
+					(stroke
+						(width 0.508)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(rectangle
+					(start -1.143 2.54)
+					(end 1.143 -2.54)
+					(stroke
+						(width 0.3048)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 1.905 -1.27) (xy 1.905 1.27)
+					)
+					(stroke
+						(width 0.508)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 2.54 0) (xy 1.905 0)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "Crystal_1_1"
+				(pin passive line
+					(at -3.81 0 0)
+					(length 1.27)
+					(name "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 3.81 0 180)
+					(length 1.27)
+					(name "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+		(symbol "lte_board:D_TVS"
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 1.016)
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "D"
+				(at 0 2.54 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "D_TVS"
+				(at 0 -2.54 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "~"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Bidirectional transient-voltage-suppression diode"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "diode TVS thyrector"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_fp_filters" "TO-???* *_Diode_* *SingleDiode* D_*"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "D_TVS_0_1"
+				(polyline
+					(pts
+						(xy -2.54 1.27) (xy -2.54 -1.27) (xy 2.54 1.27) (xy 2.54 -1.27) (xy -2.54 1.27)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0.508 1.27) (xy 0 1.27) (xy 0 -1.27) (xy -0.508 -1.27)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 1.27 0) (xy -1.27 0)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "D_TVS_1_1"
+				(pin passive line
+					(at -3.81 0 0)
+					(length 2.54)
+					(name "A1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 3.81 0 180)
+					(length 2.54)
+					(name "A2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+		(symbol "lte_board:TPS22945"
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "U"
+				(at -6.35 6.35 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "TPS22945"
+				(at -6.35 -6.35 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" "Package_TO_SOT_SMD:SOT-23-5"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Current-limited load switch, 100-200 mA, active-high ON, open-drain OC flag"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "TPS22945_0_1"
+				(rectangle
+					(start -6.35 5.08)
+					(end 6.35 -5.08)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "TPS22945_1_1"
+				(pin power_in line
+					(at -8.89 2.54 0)
+					(length 2.54)
+					(name "VIN"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "5"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -8.89 0 0)
+					(length 2.54)
+					(name "ON"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "4"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at -8.89 -2.54 0)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_out line
+					(at 8.89 2.54 180)
+					(length 2.54)
+					(name "VOUT"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin open_collector line
+					(at 8.89 0 180)
+					(length 2.54)
+					(name "OC"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 	)
 	(text "Nano-SIM"
 		(exclude_from_sim no)
@@ -7877,9 +8354,25 @@
 		(at 490.22 83.82)
 		(uuid "52977d3b-5e01-5055-8407-d7a5a5f77e2a")
 	)
-	(no_connect
-		(at 228.6 86.36)
-		(uuid "532045c1-8622-5112-b24e-02acdec76c6e")
+	(wire
+		(pts
+			(xy 228.6 86.36) (xy 226.06 86.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7283f7b7-1c86-4683-8be7-2f36a5bb897b")
+	)
+	(label "OSC32_OUT"
+		(at 226.06 86.36 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "f70c227b-a4c4-4935-90bb-6d261dbb9d9c")
 	)
 	(no_connect
 		(at 490.22 119.38)
@@ -7897,9 +8390,25 @@
 		(at 490.22 78.74)
 		(uuid "741ba0e6-c8fc-5545-8367-1edd8153383c")
 	)
-	(no_connect
-		(at 228.6 83.82)
-		(uuid "79ad8659-fea1-50cb-867c-72ef0c05e0db")
+	(wire
+		(pts
+			(xy 228.6 83.82) (xy 226.06 83.82)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1a13306c-7b37-4bb1-8426-a0853f428020")
+	)
+	(label "OSC32_IN"
+		(at 226.06 83.82 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "923a0e02-2719-4504-a64a-36709530f9ea")
 	)
 	(no_connect
 		(at 490.22 137.16)
@@ -7945,9 +8454,25 @@
 		(at 490.22 73.66)
 		(uuid "c5395b30-3e2e-5513-aa2e-6bd701bedab9")
 	)
-	(no_connect
-		(at 228.6 104.14)
-		(uuid "cac7b319-5705-5d43-81b2-0306f7f092f0")
+	(wire
+		(pts
+			(xy 228.6 104.14) (xy 226.06 104.14)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "5aabae9b-1ebe-44e8-9240-9a343fce770e")
+	)
+	(label "GNSS_ANT_FLT"
+		(at 226.06 104.14 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "2dbbe483-414b-4f85-98f7-fe8704077cad")
 	)
 	(no_connect
 		(at 490.22 91.44)
@@ -7969,9 +8494,25 @@
 		(at 21.59 261.62)
 		(uuid "d7ff5f30-d0ea-5520-9587-de83ca53e5e7")
 	)
-	(no_connect
-		(at 259.08 101.6)
-		(uuid "d89fdc93-d2b7-5ca7-a597-41cb22bc95cc")
+	(wire
+		(pts
+			(xy 259.08 101.6) (xy 261.62 101.6)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "fb4221a5-33d4-4d82-947d-e01b7ed7ac85")
+	)
+	(label "GNSS_ANT_EN"
+		(at 261.62 101.6 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "12504cc3-052e-4583-8a2a-65c66ae31441")
 	)
 	(no_connect
 		(at 490.22 109.22)
@@ -11867,7 +12408,7 @@
 		)
 		(uuid "3a601a16-da5d-41f3-8d66-31a24b58b22a")
 	)
-	(label "LTE_ANT"
+	(label "LTE_MATCH"
 		(at 441.96 288.29 0)
 		(effects
 			(font
@@ -12837,7 +13378,7 @@
 		)
 		(uuid "b32da8bd-f5e3-5cda-a1bb-1680df8cc425")
 	)
-	(label "GNSS_ANT"
+	(label "GNSS_MATCH"
 		(at 513.08 300.99 0)
 		(effects
 			(font
@@ -13487,7 +14028,7 @@
 		)
 		(uuid "ef764fbd-8506-5284-9b82-3a0c413d3ead")
 	)
-	(label "LTE_ANT"
+	(label "LTE_MATCH"
 		(at 426.72 300.99 0)
 		(effects
 			(font
@@ -17721,7 +18262,7 @@
 		(at 543.56 294.64 0)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(dnp no)
 		(uuid "3905d22a-f25b-5944-b807-d8b3a0a581a5")
@@ -17734,7 +18275,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "GNSS_ANT"
+		(property "Value" "GNSS_ANT (SMA)"
 			(at 539.75 299.72 0)
 			(effects
 				(font
@@ -17743,7 +18284,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Connector_Coaxial:U.FL_Hirose_U.FL-R-SMT-1_Vertical"
+		(property "Footprint" "lte_board_lcsc:SMA_Amphenol_132322_EdgeMount"
 			(at 543.56 294.64 0)
 			(effects
 				(font
@@ -17761,7 +18302,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" ""
+		(property "Description" "SMA end-launch jack, hand-soldered (not JLC-assembled); active GNSS antenna"
 			(at 543.56 294.64 0)
 			(effects
 				(font
@@ -17770,7 +18311,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C88374"
+		(property "LCSC" "C42394535"
 			(at 543.56 294.64 0)
 			(effects
 				(font
@@ -17779,7 +18320,7 @@
 				(hide yes)
 			)
 		)
-		(property "MPN" "U.FL-R-SMT-1(80)"
+		(property "MPN" "Amphenol 132322"
 			(at 543.56 294.64 0)
 			(effects
 				(font
@@ -29323,7 +29864,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Inductor_SMD:L_Wuerth_MAPI-4030"
+		(property "Footprint" "lte_board_lcsc:L_Sunlord_SWPA4030S"
 			(at 106.68 106.68 0)
 			(effects
 				(font
@@ -31170,6 +31711,2961 @@
 			(project "lte_board"
 				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
 					(reference "#PWR052")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(wire
+		(pts
+			(xy 201.93 86.36) (xy 199.39 86.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9741eda6-f249-4f9f-a73b-e30aaa993681")
+	)
+	(label "OSC32_IN"
+		(at 199.39 86.36 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "f4dc9ef2-8045-4a1e-a5a9-54d2522e9fd2")
+	)
+	(wire
+		(pts
+			(xy 209.55 86.36) (xy 212.09 86.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "999d3ffa-7569-45d3-96e2-04e3900117d5")
+	)
+	(label "OSC32_OUT"
+		(at 212.09 86.36 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "399028db-317a-4384-beaa-7ad072cdb523")
+	)
+	(wire
+		(pts
+			(xy 199.39 93.98) (xy 199.39 91.44)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "35b0a5ea-2825-4685-a695-41635cdae43c")
+	)
+	(label "OSC32_IN"
+		(at 199.39 91.44 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "bd58ac5e-d604-4e19-9f50-51b382b378ad")
+	)
+	(wire
+		(pts
+			(xy 199.39 101.6) (xy 199.39 104.14)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "f6b05e08-70a9-4ee6-a7d5-baa58ebfaf0e")
+	)
+	(wire
+		(pts
+			(xy 212.09 93.98) (xy 212.09 91.44)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d2874387-8d48-49b0-9171-4b29077361bd")
+	)
+	(label "OSC32_OUT"
+		(at 212.09 91.44 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "64aaa028-43c1-47da-b5d2-19cc550bc7a8")
+	)
+	(wire
+		(pts
+			(xy 212.09 101.6) (xy 212.09 104.14)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "53c21e32-061c-42f1-b20c-860973547af6")
+	)
+	(symbol
+		(lib_id "lte_board:Crystal")
+		(at 205.74 86.36 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "d46f555a-11cd-4e62-bc71-fb84d30595c2")
+		(property "Reference" "Y1"
+			(at 205.74 81.28 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "32.768kHz"
+			(at 205.74 83.06 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Crystal:Crystal_SMD_3215-2Pin_3.2x1.5mm"
+			(at 205.74 86.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 205.74 86.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "32.768 kHz, 7 pF load, +/-20 ppm (Seiko SC-32S); LSE for the RTC"
+			(at 205.74 86.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C97604"
+			(at 205.74 86.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "SC-32S 32.768kHz 20PPM 7pF"
+			(at 205.74 86.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "b25c4af4-964c-469b-b185-32fba0601c8f")
+		)
+		(pin "2"
+			(uuid "346ef3db-c4d9-44a2-af9f-c07039e26dd3")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "Y1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:C")
+		(at 199.39 97.79 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "83f586ba-878f-4350-9dbf-7ee9fb1197a8")
+		(property "Reference" "C54"
+			(at 201.422 96.52 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "10pF"
+			(at 201.422 99.06 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
+			(at 199.39 97.79 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 199.39 97.79 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "LSE load capacitor (C0G)"
+			(at 199.39 97.79 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C32949"
+			(at 199.39 97.79 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "CL05C100JB5NNNC"
+			(at 199.39 97.79 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "b6da4fae-bde4-4a07-bf3a-f398e434e320")
+		)
+		(pin "2"
+			(uuid "4cf9c605-012f-4baa-9f73-ec6c32ce0d31")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "C54")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:C")
+		(at 212.09 97.79 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "38ba29cf-55d7-45f1-9740-626ce4ecc19f")
+		(property "Reference" "C55"
+			(at 214.122 96.52 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "10pF"
+			(at 214.122 99.06 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
+			(at 212.09 97.79 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 212.09 97.79 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "LSE load capacitor (C0G)"
+			(at 212.09 97.79 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C32949"
+			(at 212.09 97.79 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "CL05C100JB5NNNC"
+			(at 212.09 97.79 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "b44f882e-44f1-464f-8fb8-2ca183cabf2d")
+		)
+		(pin "2"
+			(uuid "89d45bb7-9309-40f8-af5d-386b389d3c71")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "C55")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:GND")
+		(at 199.39 104.14 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "be4001ef-6251-43a3-b2e9-ceed409fa11d")
+		(property "Reference" "#PWR124"
+			(at 199.39 104.14 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 199.39 104.14 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 199.39 104.14 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 199.39 104.14 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 199.39 104.14 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "deb6f3a4-47a9-4f6d-aa67-2c6e7dda014d")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "#PWR124")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:GND")
+		(at 212.09 104.14 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "db46b59c-9c56-49d9-b91a-79d1ec46a4b6")
+		(property "Reference" "#PWR125"
+			(at 212.09 104.14 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 212.09 104.14 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 212.09 104.14 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 212.09 104.14 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 212.09 104.14 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "4b218f9b-24a5-4bd4-816d-d3ff8ea10684")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "#PWR125")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(wire
+		(pts
+			(xy 411.48 336.55) (xy 411.48 334.01)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "af493075-b530-451f-82f5-f5b1ee7897ce")
+	)
+	(label "LTE_MATCH"
+		(at 411.48 334.01 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "dfaac605-aaa9-4f1e-8be3-59703d96fb4d")
+	)
+	(wire
+		(pts
+			(xy 411.48 344.17) (xy 411.48 346.71)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ee5a67ca-a447-4e99-8442-6d5c7e43c4b6")
+	)
+	(label "LTE_ANT"
+		(at 411.48 346.71 270)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "122fa43b-9405-4de8-819d-13fc312f233c")
+	)
+	(wire
+		(pts
+			(xy 427.99 340.36) (xy 425.45 340.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "68429329-f840-4d61-9d9d-fe49dc054328")
+	)
+	(label "LTE_ANT"
+		(at 425.45 340.36 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "1d6ab708-1feb-4620-8e16-158b46c76950")
+	)
+	(wire
+		(pts
+			(xy 435.61 340.36) (xy 438.15 340.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "915b6777-430a-4f31-b482-110869ce8940")
+	)
+	(wire
+		(pts
+			(xy 438.15 340.36) (xy 438.15 342.9)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6e78e1f6-8e34-4dba-b3c0-dd9cb2bd98d0")
+	)
+	(wire
+		(pts
+			(xy 452.12 336.55) (xy 452.12 334.01)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1be310c5-8f19-4497-96c0-12fa6fc717f9")
+	)
+	(label "LTE_ANT"
+		(at 452.12 334.01 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "7391299d-c3bb-4bc0-abac-5309ab46f453")
+	)
+	(wire
+		(pts
+			(xy 452.12 344.17) (xy 452.12 346.71)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "618db9ae-dda1-4440-aee0-c87d1e940e0e")
+	)
+	(label "LTE_SMA"
+		(at 452.12 346.71 270)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "6450d7d5-9177-46b9-b752-43915f72b108")
+	)
+	(wire
+		(pts
+			(xy 471.17 337.82) (xy 463.55 337.82)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "992d8ab8-998e-4925-95e4-e0442f546bed")
+	)
+	(label "LTE_SMA"
+		(at 463.55 337.82 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "dbe1de2e-a662-4367-b6ab-73c71ad97982")
+	)
+	(wire
+		(pts
+			(xy 471.17 340.36) (xy 468.63 340.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "61e65a66-5dcf-4c8e-96f9-f866965d0bf5")
+	)
+	(wire
+		(pts
+			(xy 468.63 340.36) (xy 468.63 342.9)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1c5d00a7-795c-4bf5-8545-81311ea575b4")
+	)
+	(wire
+		(pts
+			(xy 500.38 336.55) (xy 500.38 334.01)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9de020c1-68bb-466b-bb97-6d6d8a0f1ab3")
+	)
+	(label "GNSS_MATCH"
+		(at 500.38 334.01 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "4b12989d-11c6-4684-bcba-e0d831d918d1")
+	)
+	(wire
+		(pts
+			(xy 500.38 344.17) (xy 500.38 346.71)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4b8cd76f-e173-43ae-bf88-798d5b942bc1")
+	)
+	(label "GNSS_ANT"
+		(at 500.38 346.71 270)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "5737a4ab-6557-46a4-b8d3-a5449829d43b")
+	)
+	(wire
+		(pts
+			(xy 510.54 336.55) (xy 510.54 334.01)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "5ef5d31a-c3a5-4b7e-851c-304e5f91aeba")
+	)
+	(label "GNSS_MATCH"
+		(at 510.54 334.01 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "5585f465-3c79-45d4-9029-3599b407d393")
+	)
+	(wire
+		(pts
+			(xy 510.54 344.17) (xy 510.54 346.71)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7de29eaf-b149-4f18-b64e-74228f70a69a")
+	)
+	(wire
+		(pts
+			(xy 520.7 336.55) (xy 520.7 334.01)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "573d1c2e-530f-4a03-9722-05f18ddd7ac3")
+	)
+	(label "MDM_GNSS"
+		(at 520.7 334.01 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "dbb148fd-07a5-41bc-9646-2b1486ef25eb")
+	)
+	(wire
+		(pts
+			(xy 520.7 344.17) (xy 520.7 346.71)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "70d87927-6508-4227-b18e-e2cfd4128c42")
+	)
+	(wire
+		(pts
+			(xy 534.67 340.36) (xy 532.13 340.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "847a0765-89c6-43f5-96f6-34cbe67509b8")
+	)
+	(label "GNSS_ANT"
+		(at 532.13 340.36 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "1818b165-da95-41a1-8acb-4560f4794703")
+	)
+	(wire
+		(pts
+			(xy 542.29 340.36) (xy 544.83 340.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "bb8e0c66-5544-4ed1-b33b-2cb083d3ec23")
+	)
+	(wire
+		(pts
+			(xy 544.83 340.36) (xy 544.83 342.9)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0d76c61c-f5e1-48e5-90fc-c9f10cec0e8c")
+	)
+	(wire
+		(pts
+			(xy 500.38 367.03) (xy 500.38 364.49)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a6bbd9bf-60cb-4bf8-a5dc-121e209bcabc")
+	)
+	(label "GNSS_ANT"
+		(at 500.38 364.49 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "df983926-7540-41f9-8c43-c8ceba68d6fc")
+	)
+	(wire
+		(pts
+			(xy 500.38 374.65) (xy 500.38 377.19)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "af226723-d03d-48db-81cf-60e4d8d64c0e")
+	)
+	(label "GNSS_BIAS"
+		(at 500.38 377.19 270)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "bce9f92b-7607-42f3-860d-0a2bdce4fdb6")
+	)
+	(wire
+		(pts
+			(xy 510.54 367.03) (xy 510.54 364.49)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "dbb88926-9944-4ef3-8b64-66268659c716")
+	)
+	(label "GNSS_BIAS"
+		(at 510.54 364.49 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "7cd61bd1-aca6-4604-8c07-b09f135efe1b")
+	)
+	(wire
+		(pts
+			(xy 510.54 374.65) (xy 510.54 377.19)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "2cd7cdd8-c75a-4da8-87cb-2b0d90402758")
+	)
+	(label "GNSS_VANT"
+		(at 510.54 377.19 270)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "3b2f5bea-109a-471d-8457-742d4563c8cb")
+	)
+	(wire
+		(pts
+			(xy 520.7 367.03) (xy 520.7 364.49)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "c7be128e-b07f-449f-ac2c-1337a2076205")
+	)
+	(label "GNSS_VANT"
+		(at 520.7 364.49 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "2d397919-71de-4125-b0cd-597700e4f9cf")
+	)
+	(wire
+		(pts
+			(xy 520.7 374.65) (xy 520.7 377.19)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "179ab14a-2620-41b5-922a-eaf6a9e76930")
+	)
+	(wire
+		(pts
+			(xy 530.86 367.03) (xy 530.86 364.49)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7c923e7a-f942-45d9-a3f0-884863021c58")
+	)
+	(wire
+		(pts
+			(xy 530.86 374.65) (xy 530.86 377.19)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e3786bc1-e7da-46bc-bd42-b5ef6799f2a7")
+	)
+	(wire
+		(pts
+			(xy 541.02 367.03) (xy 541.02 364.49)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7dd17e8a-5a6a-4bc7-9bd0-828fdda48124")
+	)
+	(label "GNSS_ANT_EN"
+		(at 541.02 364.49 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "166142a4-a0ad-40b2-aded-aad393ab4a52")
+	)
+	(wire
+		(pts
+			(xy 541.02 374.65) (xy 541.02 377.19)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4e6e07be-8f11-4062-9902-af4ebcc91d54")
+	)
+	(wire
+		(pts
+			(xy 554.99 368.3) (xy 552.45 368.3)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "8524335e-8100-4717-a081-8ab4c78223ea")
+	)
+	(wire
+		(pts
+			(xy 552.45 368.3) (xy 552.45 365.76)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "5333374f-88de-4e6e-801d-0b82db01b9ed")
+	)
+	(wire
+		(pts
+			(xy 554.99 370.84) (xy 549.91 370.84)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ffb02e07-877c-4239-ae64-28c30eea39db")
+	)
+	(label "GNSS_ANT_EN"
+		(at 549.91 370.84 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "b734a169-aa45-43dc-9a3d-f0c475951151")
+	)
+	(wire
+		(pts
+			(xy 554.99 373.38) (xy 552.45 373.38)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "3aef3baa-6afb-431d-82a1-8e711f867924")
+	)
+	(wire
+		(pts
+			(xy 552.45 373.38) (xy 552.45 375.92)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ed5c94aa-8d0e-4679-ab74-114bfc7809e6")
+	)
+	(wire
+		(pts
+			(xy 572.77 368.3) (xy 575.31 368.3)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "2a99afc3-b132-4825-9ffd-fbc40d2eda48")
+	)
+	(label "GNSS_VANT"
+		(at 575.31 368.3 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "dfcd4b57-dd1a-461b-91a5-71f35ee9f1f6")
+	)
+	(wire
+		(pts
+			(xy 572.77 370.84) (xy 575.31 370.84)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "2661c4fc-79c5-4536-ae79-ac249a41b056")
+	)
+	(label "GNSS_ANT_FLT"
+		(at 575.31 370.84 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "990fef6f-a258-4e9d-9041-5e5de37e9eb9")
+	)
+	(symbol
+		(lib_id "lte_board:C")
+		(at 411.48 340.36 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "0a3e00a3-babe-4526-9a34-2a9011db85c4")
+		(property "Reference" "C61"
+			(at 413.512 339.09 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "100pF"
+			(at 413.512 341.63 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
+			(at 411.48 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 411.48 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "LTE antenna series cap, fitted (SIM7080G HD V1.05 Fig. 28: ESD)"
+			(at 411.48 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C1546"
+			(at 411.48 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "0402CG101J500NT"
+			(at 411.48 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "3194bd8d-5337-4e41-854f-a7d9b8714d15")
+		)
+		(pin "2"
+			(uuid "71bfa7a7-45b7-4712-92a7-bee6ff050651")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "C61")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:D_TVS")
+		(at 431.8 340.36 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "40e9834a-4aaf-4bba-97ca-9a7c5b1fc26b")
+		(property "Reference" "D6"
+			(at 433.832 339.09 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "ESD103-B1-02EL"
+			(at 433.832 341.63 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "lte_board_lcsc:TSLP-2-20_L1.0-W0.6-P0.65-BI"
+			(at 431.8 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 431.8 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "LTE antenna ESD, 0.09 pF @1 GHz, VRWM 15 V"
+			(at 431.8 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C535146"
+			(at 431.8 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "ESD103-B1-02EL E6327"
+			(at 431.8 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "1818e195-4767-4155-a6a9-4fcb385d205f")
+		)
+		(pin "2"
+			(uuid "c8d2f86f-0bcf-4905-97a3-66579244e8df")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "D6")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:GND")
+		(at 438.15 342.9 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "1f46f754-a738-4a77-8a62-a52be8dfd876")
+		(property "Reference" "#PWR126"
+			(at 438.15 342.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 438.15 342.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 438.15 342.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 438.15 342.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 438.15 342.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "26047a98-b75b-4ce5-bad3-3db8c5e38009")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "#PWR126")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:R")
+		(at 452.12 340.36 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp yes)
+		(uuid "592436ae-0e1d-4ca4-86d8-a65524fdca7b")
+		(property "Reference" "R40"
+			(at 454.152 339.09 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "0R"
+			(at 454.152 341.63 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
+			(at 452.12 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 452.12 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "DNP: fit 0R to use the SMA jack J10 instead of the U.FL J6"
+			(at 452.12 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C17168"
+			(at 452.12 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "0402WGF0000TCE"
+			(at 452.12 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "5f264117-dd1d-4c54-9622-1517dac4b197")
+		)
+		(pin "2"
+			(uuid "813c0c24-5fdf-4013-acaf-fbd2277fcd1b")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "R40")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:U.FL")
+		(at 477.52 340.36 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "5d9ac942-8bbf-4dc9-ac8e-e50d686c0250")
+		(property "Reference" "J10"
+			(at 473.71 334.01 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "LTE_ANT (SMA)"
+			(at 473.71 345.44 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "lte_board_lcsc:SMA_Amphenol_132322_EdgeMount"
+			(at 477.52 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 477.52 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "SMA end-launch jack, optional, hand-soldered; fit R40 with it"
+			(at 477.52 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C42394535"
+			(at 477.52 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "Amphenol 132322"
+			(at 477.52 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "8f6753cd-a47b-4c2e-b77e-3f4e5f810dc1")
+		)
+		(pin "2"
+			(uuid "105e4381-c78b-4afb-812a-6363849517b1")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "J10")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:GND")
+		(at 468.63 342.9 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "8fd5b3b7-375f-4897-bc10-127a9c68a71f")
+		(property "Reference" "#PWR127"
+			(at 468.63 342.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 468.63 342.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 468.63 342.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 468.63 342.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 468.63 342.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "94fa8e9e-31a2-4c68-b209-125a888b0bac")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "#PWR127")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:C")
+		(at 500.38 340.36 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "8f53d273-3000-4dc0-9a95-9c474beebb5f")
+		(property "Reference" "C56"
+			(at 502.412 339.09 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "100pF"
+			(at 502.412 341.63 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
+			(at 500.38 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 500.38 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "GNSS DC block: keeps the antenna bias off the module pin (HD V1.05 4.3.2 note 5)"
+			(at 500.38 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C1546"
+			(at 500.38 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "0402CG101J500NT"
+			(at 500.38 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "3ce56793-7dc5-4de8-80c7-828db8ace025")
+		)
+		(pin "2"
+			(uuid "5e2a6a2b-e8e8-4b8f-ab65-7f91c3a19361")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "C56")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:C")
+		(at 510.54 340.36 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp yes)
+		(uuid "8cf2e1b2-390a-4434-b985-44d75d084be0")
+		(property "Reference" "C58"
+			(at 512.572 339.09 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "DNP"
+			(at 512.572 341.63 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
+			(at 510.54 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 510.54 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "GNSS match shunt (DC-free side), DNP"
+			(at 510.54 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "82ad6d65-47eb-4565-ad2d-b8588a7e7915")
+		)
+		(pin "2"
+			(uuid "ce315858-cd73-4435-84b6-9fee4e63c0cd")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "C58")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:GND")
+		(at 510.54 346.71 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "297b1e26-fbb2-438e-998c-68c60f804869")
+		(property "Reference" "#PWR128"
+			(at 510.54 346.71 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 510.54 346.71 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 510.54 346.71 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 510.54 346.71 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 510.54 346.71 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "2d03e321-1e29-44cf-ac0d-046f451b2b5e")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "#PWR128")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:C")
+		(at 520.7 340.36 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp yes)
+		(uuid "ab9dbe57-e28a-4eb4-be91-0237bb27b23b")
+		(property "Reference" "C59"
+			(at 522.732 339.09 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "DNP"
+			(at 522.732 341.63 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
+			(at 520.7 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 520.7 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "GNSS match shunt, module side, DNP"
+			(at 520.7 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "73b88e35-2090-4cea-9d0a-8f61841ef24a")
+		)
+		(pin "2"
+			(uuid "a80523bc-8017-41e9-b9d4-c254a57c3f3c")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "C59")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:GND")
+		(at 520.7 346.71 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "0ed2ac65-5fa9-479d-a1aa-7a5f5e76af44")
+		(property "Reference" "#PWR129"
+			(at 520.7 346.71 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 520.7 346.71 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 520.7 346.71 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 520.7 346.71 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 520.7 346.71 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "a6a191ba-7343-4a1f-bbe6-056f84489866")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "#PWR129")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:D_TVS")
+		(at 538.48 340.36 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "bd40ffef-a477-4b72-ad14-e2158f57e025")
+		(property "Reference" "D5"
+			(at 540.512 339.09 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "WE05DGCF-B"
+			(at 540.512 341.63 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "lte_board_lcsc:DFN1006-2L-BI"
+			(at 538.48 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 538.48 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "GNSS antenna ESD, 0.18 pF, VRWM 5 V (clears the 3.3 V bias)"
+			(at 538.48 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C3039401"
+			(at 538.48 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "WE05DGCF-B"
+			(at 538.48 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "314c3624-fbae-429d-99ef-3692415cb977")
+		)
+		(pin "2"
+			(uuid "157a6546-8b2a-44f4-adab-fa5e5d909cba")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "D5")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:GND")
+		(at 544.83 342.9 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "0c4ffb50-8233-495f-92d5-987b820982f7")
+		(property "Reference" "#PWR130"
+			(at 544.83 342.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 544.83 342.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 544.83 342.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 544.83 342.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 544.83 342.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "6b03750e-8a3e-4c43-9dd9-59d38f562b6a")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "#PWR130")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:L")
+		(at 500.38 370.84 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "0e7b6c05-c6af-4c73-92a1-05c0ffa371af")
+		(property "Reference" "L2"
+			(at 502.412 369.57 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "47nH"
+			(at 502.412 372.11 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Inductor_SMD:L_0402_1005Metric"
+			(at 500.38 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 500.38 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "GNSS bias RF choke, SRF >= 2.9 GHz (high impedance at 1575 MHz)"
+			(at 500.38 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C192855"
+			(at 500.38 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "LQW15AN47NJ00D"
+			(at 500.38 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "d8afbc0a-9cfb-47bd-bb2a-f0f21596b389")
+		)
+		(pin "2"
+			(uuid "d1fc6e49-152f-4056-8865-2e09bb455755")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "L2")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:R")
+		(at 510.54 370.84 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "f18e7bd2-b5d4-4d4d-a4ec-087c51f06c6d")
+		(property "Reference" "R38"
+			(at 512.572 369.57 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "10R"
+			(at 512.572 372.11 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
+			(at 510.54 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 510.54 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "GNSS bias series resistor (HD V1.05 Fig. 29)"
+			(at 510.54 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C25077"
+			(at 510.54 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "0402WGF100JTCE"
+			(at 510.54 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "2112d2ff-c215-4c60-aab3-f389e378af8c")
+		)
+		(pin "2"
+			(uuid "7d724af9-c1ab-46a5-bd03-76f4baa6a9b0")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "R38")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:C")
+		(at 520.7 370.84 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "dbeb40d0-0e3f-4ec1-9524-df22cc1a02f9")
+		(property "Reference" "C57"
+			(at 522.732 369.57 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "100nF"
+			(at 522.732 372.11 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
+			(at 520.7 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 520.7 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "antenna supply decoupling"
+			(at 520.7 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C1525"
+			(at 520.7 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "CL05B104KO5NNNC"
+			(at 520.7 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "1cc77c10-c833-4645-a735-c6a7832c3467")
+		)
+		(pin "2"
+			(uuid "e8ef4090-6427-4f7a-a49e-68f858a945a0")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "C57")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:GND")
+		(at 520.7 377.19 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "3de13d3a-8139-45eb-9592-e31f95fa9ea2")
+		(property "Reference" "#PWR131"
+			(at 520.7 377.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 520.7 377.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 520.7 377.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 520.7 377.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 520.7 377.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "d5128775-0794-440a-a6e0-37ac6e8caa2f")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "#PWR131")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:C")
+		(at 530.86 370.84 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "c61196cf-c121-420a-845f-671c7cd1cfe5")
+		(property "Reference" "C60"
+			(at 532.892 369.57 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "100nF"
+			(at 532.892 372.11 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
+			(at 530.86 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 530.86 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "U10 input decoupling"
+			(at 530.86 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C1525"
+			(at 530.86 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "CL05B104KO5NNNC"
+			(at 530.86 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "b161ec88-e6ff-440e-85cd-f5285070553f")
+		)
+		(pin "2"
+			(uuid "acc654d4-e7d2-4018-b548-2084db566c41")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "C60")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:+3V3")
+		(at 530.86 364.49 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "b11779de-bbdd-48c7-bfdf-4fcd725d2735")
+		(property "Reference" "#PWR132"
+			(at 530.86 364.49 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "+3V3"
+			(at 530.86 361.95 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 530.86 364.49 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 530.86 364.49 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 530.86 364.49 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "fea1e650-5171-48c0-902f-9acd619fc3ca")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "#PWR132")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:GND")
+		(at 530.86 377.19 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "be9cccce-dcb1-4875-b103-bb66e3353316")
+		(property "Reference" "#PWR133"
+			(at 530.86 377.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 530.86 377.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 530.86 377.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 530.86 377.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 530.86 377.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "b2e21640-42e9-4fdd-95d6-ed7d7319a652")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "#PWR133")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:R")
+		(at 541.02 370.84 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "0a7f4c77-e053-44d9-8b2d-5ad9bb95a4d0")
+		(property "Reference" "R39"
+			(at 543.052 369.57 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "100k"
+			(at 543.052 372.11 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
+			(at 541.02 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 541.02 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "keeps the antenna supply off through reset"
+			(at 541.02 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C25741"
+			(at 541.02 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "0402WGF1003TCE"
+			(at 541.02 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "9dab1ca4-49c4-4a0a-9e98-2db1a06e68c9")
+		)
+		(pin "2"
+			(uuid "c921d6d9-16cb-4df6-a950-012e37c07e3a")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "R39")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:GND")
+		(at 541.02 377.19 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "5d5b6f8c-0129-48e4-bc9c-bd8e117c7b2e")
+		(property "Reference" "#PWR134"
+			(at 541.02 377.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 541.02 377.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 541.02 377.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 541.02 377.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 541.02 377.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "c73ac385-c8b5-46bd-ab1f-f0bcca99cfd7")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "#PWR134")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:TPS22945")
+		(at 563.88 370.84 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "b57ab80e-3881-4628-ab5e-ca9f423b56f1")
+		(property "Reference" "U10"
+			(at 557.53 364.49 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "TPS22945"
+			(at 557.53 378.46 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "lte_board_lcsc:SC-70-5_L2.1-W1.3-P0.65-LS2.1-BL"
+			(at 563.88 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 563.88 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "active GNSS antenna supply switch, 100-200 mA limit"
+			(at 563.88 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C47507"
+			(at 563.88 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "TPS22945DCKR"
+			(at 563.88 370.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "4"
+			(uuid "5e1d158b-5edb-488b-9140-3a78eb90301f")
+		)
+		(pin "1"
+			(uuid "d63c7875-6d1c-4bd1-b2ec-28ab27497d9a")
+		)
+		(pin "2"
+			(uuid "c67c50f7-7852-4d97-bb63-fafe4d5bc0c9")
+		)
+		(pin "3"
+			(uuid "7785bd89-d786-4269-8dad-44881b857ef5")
+		)
+		(pin "5"
+			(uuid "48af42af-8234-4c79-b4bf-3d2fbbe8f241")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "U10")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:+3V3")
+		(at 552.45 365.76 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "30efef8f-d8a2-4c61-8065-73117c57a2b0")
+		(property "Reference" "#PWR135"
+			(at 552.45 365.76 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "+3V3"
+			(at 552.45 363.22 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 552.45 365.76 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 552.45 365.76 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 552.45 365.76 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "9d0b9670-bb52-4cfc-a39e-f743b34f709f")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "#PWR135")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:GND")
+		(at 552.45 375.92 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "0faa2fdd-d692-48fd-9108-825c3685727d")
+		(property "Reference" "#PWR136"
+			(at 552.45 375.92 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 552.45 375.92 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 552.45 375.92 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 552.45 375.92 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 552.45 375.92 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "4f0c2160-09ec-4c6b-9c8c-b3a859ff978d")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "#PWR136")
 					(unit 1)
 				)
 			)

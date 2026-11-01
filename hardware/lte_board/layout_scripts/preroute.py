@@ -29,18 +29,46 @@ def zone(pts, net, layer, prio=0, clearance=0.2):
     z.SetThermalReliefGap(FromMM(0.2)); z.SetThermalReliefSpokeWidth(FromMM(0.3))
     b.Add(z); return z
 
-# ---- LTE: U6.32 -> R19 -> J6.1, shunts C40 (modem side) / C41 (antenna side)
-m = pos("U6", "32"); r1 = pos("R19", "1"); r2 = pos("R19", "2"); j = pos("J6", "1")
+# ---- LTE: U6.32 -> R19 -> C61 (series 100 pF) -> node: J6 U.FL below, D6 TVS above, R40 (DNP 0R) east -> J10 SMA
+m = pos("U6", "32"); r1 = pos("R19", "1"); r2 = pos("R19", "2")
 c40 = pos("C40", "1"); c41 = pos("C41", "1")
 track([m, r1], "/MDM_RF"); track([c40, (c40[0], m[1])], "/MDM_RF")
-track([r2, (j[0], r2[1]), j], "/LTE_ANT"); track([c41, (c41[0], r2[1])], "/LTE_ANT")
-# ---- GNSS: U6.68 (inner pad) -> escape through top-left module corner -> R20 -> J7.1
-g = pos("U6", "68"); ra = pos("R20", "1"); rb = pos("R20", "2"); j7 = pos("J7", "1")
-track([g, (g[0] - 1.2, g[1] - 1.1), (ra[0] + 1.1, ra[1]), ra], "/MDM_GNSS")
-track([rb, j7], "/GNSS_ANT")
-# ---- RF ground stitching (In1 is solid GND)
-for x, y in [(45.0, 8.6), (46.4, 8.5), (49.6, 6.6), (44.6, 4.7), (47.0, 4.4), (25.4, 3.9), (25.6, 1.0)]:
+track([r2, pos("C61", "1")], "/LTE_MATCH"); track([c41, (c41[0], r2[1])], "/LTE_MATCH")
+n2 = pos("C61", "2"); j = pos("J6", "1"); d6 = pos("D6", "1"); ra = pos("R40", "1"); rs = pos("R40", "2")
+track([n2, (ra[0], n2[1]), ra], "/LTE_ANT"); track([(j[0], n2[1]), j], "/LTE_ANT"); track([d6, (d6[0], n2[1])], "/LTE_ANT")
+d6g = pos("D6", "2"); via(d6g[0], 5.2); track([d6g, (d6g[0], 5.2)], "GND", w=0.3)
+# SMA option: down the right edge, round J6 and into the J10 centre pad from its inboard end
+s1 = pos("J10", "1"); sx = s1[0] - 2.125 + 0.35      # just inside the inboard end of the 4.25 mm centre pad
+track([rs, (rs[0], 13.45), (58.2, 13.45), (58.2, s1[1]), (sx, s1[1])], "/LTE_SMA")
+# ---- GNSS along y = 5.0: U6.68 -> corner escape -> R20 0R -> C56 100 pF DC block -> J7 SMA centre pad
+#      shunts: C59 (module side) / C58 (DNP, above the line), D5 TVS and the L2 bias choke (below, antenna side)
+YG = 5.0
+g = pos("U6", "68"); ra = pos("R20", "1"); rb = pos("R20", "2"); ca = pos("C56", "1"); cb = pos("C56", "2")
+j7 = pos("J7", "1"); j7in = (j7[0], j7[1] + 2.125 - 0.35)     # just inside the inboard end of the centre pad
+track([g, (g[0] - 1.0, YG), ra], "/MDM_GNSS"); track([rb, ca], "/GNSS_MATCH")
+track([cb, (j7[0], YG), j7in], "/GNSS_ANT")
+for ref, net in (("C59", "/MDM_GNSS"), ("C58", "/GNSS_MATCH"), ("L2", "/GNSS_ANT"), ("D5", "/GNSS_ANT")):
+    q = pos(ref, "1"); track([q, (q[0], YG)], net)
+for ref, (dx, dy) in (("C59", (0, -0.7)), ("C58", (0, -0.7)), ("D5", (0, 0.73)),     # bias-switch GND pads get their own
+                      ("C57", (0, 0.75)), ("U10", (0, 0.81)), ("C60", (0.87, 0))):    # vias: the pour here is too narrow
+    q = pos(ref, "2"); via(q[0] + dx, q[1] + dy); track([q, (q[0] + dx, q[1] + dy)], "GND", w=0.3)
+# ---- RF ground stitching (In1 is solid GND); J7 grounds: one via outboard of each top ground pad
+for x, y in [(45.0, 8.6), (46.4, 8.5), (44.6, 4.7), (47.0, 4.4), (25.6, 1.0)]:
     via(x + DX, y)
+for dx in (-3.52 - 0.55, 3.52 + 0.55):
+    via(j7[0] + dx, 2.5)
+# ---- edge-launch SMA centre pads: no In1/In2 copper underneath (a 1.5 mm pad 0.2 mm over In1 is ~20 ohm);
+#      they reference the coplanar ground pads and B.Cu instead
+for ref in ("J7", "J10"):
+    pd = pad(ref, "1"); bb = pd.GetBoundingBox()
+    x0, y0, x1, y1 = ToMM(bb.GetLeft()) - OX - 0.3, ToMM(bb.GetTop()) - OY - 0.3, ToMM(bb.GetRight()) - OX + 0.3, ToMM(bb.GetBottom()) - OY + 0.3
+    kz = pcbnew.ZONE(b); kz.SetIsRuleArea(True); kz.SetZoneName(f"sma_ref_cutout_{ref}")
+    ls = pcbnew.LSET(); ls.AddLayer(pcbnew.In1_Cu); ls.AddLayer(pcbnew.In2_Cu); kz.SetLayerSet(ls)
+    kz.SetDoNotAllowCopperPour(True); kz.SetDoNotAllowTracks(True); kz.SetDoNotAllowVias(True)
+    kz.SetDoNotAllowPads(False); kz.SetDoNotAllowFootprints(False)
+    ol = kz.Outline(); ol.NewOutline()
+    for x, y in ((x0, y0), (x1, y0), (x1, y1), (x0, y1)): ol.Append(FromMM(OX + x), FromMM(OY + y))
+    b.Add(kz)
 
 # ---- +3V8: buck output (L1.2) down to the In2 strip, VBAT pour down to the In2 strip
 l = pos("L1", "2")
@@ -99,20 +127,21 @@ track([u1, (j3c[0], u1[1]), j3c], "/USB_DP", w=0.2)
 j4m, j3m = pos("JP4", "3"), pos("JP3", "3")
 xv = j4m[0] + 1.2
 r4a, r4b, r3a, r3b = pos("R4", "1"), pos("R4", "2"), pos("R3", "1"), pos("R3", "2")
-vx = r4a[0] + 0.92
+vx = r4a[0]                            # rev 0.5: vias above R4 / below R3, keeping x > 58 free for the LTE SMA trace
+vN, vP = 12.75, 16.05
 yN, yP = 14.25, 14.25 + WP + GP
 for q, net in ((j4m, "/MDM_USBJ_DN"), (j3m, "/MDM_USBJ_DP")):
     via_n(xv, q[1], net); track([q, (xv, q[1])], net, w=0.25)
-track([(xv, j4m[1]), (xv + yN - j4m[1], yN), (57.5, yN), (57.95, r4a[1]), (vx, r4a[1])], "/MDM_USBJ_DN", w=WP, layer=pcbnew.B_Cu)
-track([(xv, j3m[1]), (xv + yP - j3m[1], yP), (57.5, yP), (57.8, r3a[1]), (vx, r3a[1])], "/MDM_USBJ_DP", w=WP, layer=pcbnew.B_Cu)
-via_n(vx, r4a[1], "/MDM_USBJ_DN"); via_n(vx, r3a[1], "/MDM_USBJ_DP")
-track([(vx, r4a[1]), r4a], "/MDM_USBJ_DN", w=0.25); track([(vx, r3a[1]), r3a], "/MDM_USBJ_DP", w=0.25)
+track([(xv, j4m[1]), (xv + yN - j4m[1], yN), (56.8, yN), (vx, yN - 0.71), (vx, vN)], "/MDM_USBJ_DN", w=WP, layer=pcbnew.B_Cu)
+track([(xv, j3m[1]), (xv + yP - j3m[1], yP), (56.8, yP), (vx, yP + 0.71), (vx, vP)], "/MDM_USBJ_DP", w=WP, layer=pcbnew.B_Cu)
+via_n(vx, vN, "/MDM_USBJ_DN"); via_n(vx, vP, "/MDM_USBJ_DP")
+track([(vx, vN), r4a], "/MDM_USBJ_DN", w=0.25); track([(vx, vP), r3a], "/MDM_USBJ_DP", w=0.25)
 track([r4b, pos("U6", "26")], "/MDM_USB_DN", w=0.2); track([r3b, pos("U6", "25")], "/MDM_USB_DP", w=0.2)
 # keep In2 free of tracks under the pair so it stays a clean reference (pours still allowed)
 ka = pcbnew.ZONE(b); ka.SetIsRuleArea(True); ka.SetZoneName("In2_USB_ref"); ls = pcbnew.LSET(); ls.AddLayer(pcbnew.In2_Cu); ka.SetLayerSet(ls)
 ka.SetDoNotAllowTracks(True); ka.SetDoNotAllowVias(False); ka.SetDoNotAllowPads(False); ka.SetDoNotAllowCopperPour(False); ka.SetDoNotAllowFootprints(False)
 ol = ka.Outline(); ol.NewOutline()
-for x, y in [(xv - 0.4, j4m[1] - 0.4), (xv + 0.4, j4m[1] - 0.4), (xv + yN - j4m[1] + 0.35, yN - 0.95), (57.5, yN - 0.95), (57.5, yP + 0.95), (xv + yP - j3m[1] - 0.2, yP + 0.95), (xv - 0.4, j3m[1] + 0.75)]:
+for x, y in [(xv - 0.4, j4m[1] - 0.4), (xv + 0.4, j4m[1] - 0.4), (xv + yN - j4m[1] + 0.35, yN - 0.95), (57.0, yN - 0.95), (57.0, vN - 0.45), (58.0, vN - 0.45), (58.0, vP + 0.45), (57.0, vP + 0.45), (57.0, yP + 0.95), (xv + yP - j3m[1] - 0.2, yP + 0.95), (xv - 0.4, j3m[1] + 0.75)]:
     ol.Append(FromMM(OX + x), FromMM(OY + y))
 b.Add(ka)
 

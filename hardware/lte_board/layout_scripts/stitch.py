@@ -5,6 +5,7 @@ b = pcbnew.LoadBoard(sys.argv[1])
 OX, OY, W, H = 100.0, 100.0, 63.5, 46.0
 gnd = b.FindNet("GND")
 VD, CLR = 0.5, 0.2          # via pad dia, clearance
+PAD_VIA_GAP = 0.1           # via edge to any SMD pad (no via-in-pad)
 obst = []                   # (shape_poly_set, ) other-net copper on any layer
 items = []
 for fp in b.GetFootprints():
@@ -13,6 +14,7 @@ for fp in b.GetFootprints():
             items.append(p)
 for t in b.GetTracks():
     if t.GetNetname() != "GND": items.append(t)
+gnd_smd = [p for fp in b.GetFootprints() for p in fp.Pads() if p.GetNetname() == "GND" and p.GetAttribute() == pcbnew.PAD_ATTRIB_SMD]
 existing = [t for t in b.GetTracks() if t.Type() == pcbnew.PCB_VIA_T and t.GetNetname() == "GND"]
 # keep vias out of the RF shunt area and the module's centre (thermal pads)
 rules = [z for z in b.Zones() if z.GetIsRuleArea()] + [z for fp in b.GetFootprints() for z in fp.Zones()]
@@ -33,6 +35,11 @@ def blocked(x, y):
         else:
             sh = pcbnew.SHAPE_POLY_SET(); it.TransformShapeToPolygon(sh, it.GetLayer(), 0, FromMM(0.005), pcbnew.ERROR_INSIDE)
         if sh.Collide(pt, FromMM(VD / 2 + CLR)):
+            return True
+    for p in gnd_smd:      # no via in (or touching) a GND SMD pad: solder would wick into the hole
+        pb = p.GetBoundingBox()   # keep the box in a variable: Inflate() on the temporary returns a dangling ref
+        if pb.Inflate(FromMM(VD / 2 + PAD_VIA_GAP + 0.05)).Contains(pt) and \
+           p.GetEffectivePolygon(pcbnew.F_Cu, pcbnew.ERROR_INSIDE).Collide(pt, FromMM(VD / 2 + PAD_VIA_GAP)):
             return True
     for v in existing:
         if (v.GetPosition() - pt).EuclideanNorm() < FromMM(1.0):

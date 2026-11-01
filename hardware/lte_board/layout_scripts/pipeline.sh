@@ -82,6 +82,7 @@ kpy "$HERE/final_fixes.py" "$BRD" "$WORK/drc.rpt"                  # bridge stra
 kpy "$HERE/silk_marks.py" "$BRD"
 drc > /dev/null; clean_dangling
 echo "== final DRC"; drc; grep -E "^\[" "$WORK/drc.rpt" | sort | uniq -c
+"$KPY" "$HERE/check_via_in_pad.py" "$BRD" 2>&1 | quiet
 
 cp "$WORK/project.kicad_pro.orig" "$PRO"; rules        # original project settings + our rules (minimal diff)
 

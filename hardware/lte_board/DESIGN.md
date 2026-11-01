@@ -43,7 +43,10 @@ J9 JST-PH --Q3 reverse-polarity P-FET--> VBAT --> Q4 P-FET (off w/ USB) -+--> VS
 
 STM32L072CBT6 (U4) --USART2 + RTS/CTS + DTR/DCD/RI/STATUS--> TXS0108E (U5, 3.3V<->1.8V, OE = VDD_EXT) --> SIM7080G (U6)
                    --PB0--> Q1 --> PWRKEY      --PB1--> buck EN      <--PB12-- STATUS      --I2C1 (PB6/PB7)--> Qwiic J3 + U8
-SIM7080G --> nano-SIM J8 (22R series in the gap under pins 15-17, ESD U7), LTE U.FL J6 (pi-match R19/C40/C41), GNSS U.FL J7
+SIM7080G --> nano-SIM J8 (22R series in the gap under pins 15-17, ESD U7)
+         --> LTE: pi-match R19/C40/C41 -> C61 100 pF -> D6 TVS -> U.FL J6 (fitted) | R40 DNP 0R -> SMA J10 (option)
+         --> GNSS: R20 + C58/C59 DNP -> C56 100 pF DC block -> D5 TVS + L2/R38 bias feed -> SMA J7
+                   bias: U10 TPS22945 load switch on +3V3, ON = PA15, OC flag -> PB3
 ```
 
 The full pin map and block descriptions are in `README.md`. The schematic is one A2 sheet; the rev 0.2 and
@@ -79,6 +82,17 @@ checking its reason first. Several were explicit choices by the project owner.
 - USB is FS on PA11/PA12. That pushed the modem UART to **USART2** (PA2/PA3, CTS/RTS on PA0/PA1) and the
   debug UART to **USART1** (PA9/PA10, header J4).
 - **BOOT0 button SW2:** hold it and tap RESET (SW1) to enter DFU. R10 pulls BOOT0 low.
+- **ROM bootloader, checked against ST AN2606 Rev 70 §66.1 (2026-10-31):**
+  - The L072 carries bootloader **V4.x**: USART1 (PA9/PA10), USART2 (PA2/PA3) and USB DFU (PA11/PA12) only.
+    There is no SPI/I2C bootloader on this part, so the modem-side lines (e.g. DTR on PB13) can't confuse it.
+  - It enables internal pull-ups on PA10 and PA3, so the unfitted debug header doesn't need external pulls.
+  - Entry is "Pattern 2": BOOT0 pin = 1 with the factory-default nBOOT1 = 1. It runs from HSI, so DFU needs no crystal.
+  - Known limitation (V4.1): DFU can fail on some PCs' high-speed USB controllers. The workaround is a USB hub
+    between PC and board.
+- **32.768 kHz crystal Y1 on PC14/PC15 (added rev 0.4, owner's choice after the audit):** without it the RTC
+  runs on the LSI, which varies by tens of percent, which is too poor for 15-minute timestamps. Y1 is a Seiko SC-32S (C97604):
+  7 pF load and ±20 ppm. A low-CL part keeps the L0's LSE drive (and current) low. C54/C55 = 10 pF C0G: 10 pF in
+  series plus about 2 pF stray gives about 7 pF. Firmware: enable the LSE at medium-high drive first, measure, then try lower.
 
 ### 4.4 One USB-C port for two devices
 - **Chosen:** 3-pad solder jumpers JP3 (D+) / JP4 (D-), pre-bridged 1-2 = MCU; re-bridge 2-3 for the modem.
@@ -148,9 +162,33 @@ checking its reason first. Several were explicit choices by the project owner.
 - **Modem: SY8089 buck** (3.93 V; R7/R8 divider). Its EN is the modem power switch.
 
 ### 4.9 RF, SIM, USB pair
-- **LTE:** pin 32 -> R19 0R (+ DNP C40/C41 pi-match) -> J6. **GNSS:** pin 68, escaping through the module's
-  top-left corner -> R20 -> J7. Both are hand-routed at 0.35 mm, an estimate for 50 Ω (§9). In1 is solid GND
-  under the RF half.
+- **LTE (rev 0.5, SIM7080G Hardware Design V1.05 Fig. 28):** pin 32 -> R19 0R (+ DNP C40/C41 pi-match) ->
+  **C61 100 pF in series** (SIMCom fits it by default for ESD) -> node with **D6 ESD103-B1-02EL** (0.09 pF at 1 GHz,
+  ±15 V VRWM: full-power LTE peaks are about 4.5 V into 50 Ω, more into a mismatch, so a 5 V TVS could conduct)
+  -> **U.FL J6, fitted**. Works out of the box with any 50 Ω antenna; nothing in the match needs fitting.
+  - **SMA option (owner's choice):** R40 (DNP 0R) at the node feeds an Amphenol 132322 edge-launch SMA J10 on the
+    right edge. To use it, hand-solder J10 and fit R40 = 0R. The 0R keeps the unused path to a pad-sized stub (an
+    open 9 mm trace would be about 0.1 λ at 1.9 GHz: a real mismatch).
+- **GNSS (rev 0.5, Fig. 29, active antenna):** pin 68, escaping through the module's top-left corner along
+  y = 5.0 -> R20 0R (C59/C58 DNP shunts) -> **C56 100 pF DC block** (V1.05 4.3.2 note 5: mandatory; the module
+  may have a shunt inductor to GND inside its antenna pin, so DC must never reach it) -> antenna node with
+  **D5 WE05DGCF-B** (0.18 pF, 5 V) and the **bias feed L2 47 nH + R38 10R** -> **SMA J7** (Amphenol 132322, top
+  edge, hand-soldered).
+  - **Choke:** Murata LQW15AN47NJ00D, SRF ≥ 2.9 GHz (about 465 Ω at 1575 MHz). The multilayer LQG15HS47N has an
+    SRF of 1 GHz, which is useless here.
+  - **Switched feed:** U10 TPS22945 from +3V3: fixed 100-200 mA current limit with 10 ms blanking and auto-restart,
+    < 1 µA off. ON = **PA15** (R39 100k pull-down: off through reset and DFU), open-drain OC flag -> **PB3**
+    (internal pull-up). A crushed antenna cable trips the limit instead of pulling down +3V3. SIMCom: "the power
+    supply of the active antenna should be controlled and closed".
+  - **LTE and GNSS can't run at the same time** (V1.05: shared Qualcomm RX hardware), and GNSS is off by default.
+    LTE works without a GNSS antenna.
+- RF feeds are hand-routed at 0.35 mm, an estimate for 50 Ω (§9). In1 is solid GND under the RF half. The SMA
+  centre pads have **no In1/In2 copper underneath** (`sma_ref_cutout_J7/J10`): a 1.5 mm pad 0.2 mm over In1 is
+  about 20 Ω; with the cut-out it references the coplanar ground pads and B.Cu.
+- **SMA footprint** `SMA_Amphenol_132322_EdgeMount`, from drawing 132322 rev D's recommended layout. The drawing
+  doesn't dimension the edge-to-centre-pad distance; the footprint starts it 0.30 mm in (grounds 0.60 mm), which
+  meets the 0.25 mm copper-edge rule. No paste (hand-soldered); excluded from the BOM and CPL. Check the fit on
+  the first board before ordering more.
 - **SIM:** the 22R series resistors R21-R23 sit vertically in the 2.6 mm gap between modem pins 15-17 and the
   SIM contacts. The SIM7080G supports **1.8 V SIM cards only**.
 - **SIM holder (XunPu SMN-303) mechanics, checked against the manufacturer drawing (Rev A):**
@@ -269,7 +307,9 @@ The modem is off between uploads; the figures are at the 5 V/VSYS level, and the
 | `silk_marks.py board` | KiCad python | "+ J9 -" / "BAT 3.0-4.2V" silkscreen |
 | `mkpro.py lte_board.kicad_pro` | python3 | Writes design rules and net classes into the project file |
 | `make_jlc.py netlist pos.csv outdir` | python3 | `bom_jlcpcb.csv` + `cpl_jlcpcb.csv`; fails on a missing LCSC #; reports BOM/CPL mismatches |
-| `sch_rev02.py`, `sch_rev03.py` | python3 | The schematic edits for each revision (already applied; reference for how to edit the schematic by script) |
+| `hand_fix_sim_rst.py board` | KiCad Python | One-off fix for the rev 0.4 route only: finished /SIM_RST at U7 pad 4. **Not used for rev 0.5** (that route connects it); kept for reference |
+| `check_via_in_pad.py board` | KiCad Python | Lists vias touching any SMD pad (run by `pipeline.sh`; expect 0) |
+| `sch_rev02.py` ... `sch_rev05.py` | python3 | The schematic edits for each revision (already applied; reference for how to edit the schematic by script). rev05 = antenna ESD, GNSS bias tee, SMA jacks |
 
 Typical run:
 
@@ -306,6 +346,8 @@ The committed board is a hand-finished, fully clean run, so don't overwrite it u
    `mkpro.py` after *every* Python step that saves.
 2. **KiCad 9 SWIG:** after `board.Remove(item)`, a later `board.GetTracks()` can raise
    `TypeError: 'SwigPyObject' object is not iterable`. Collect lists *before* removing anything.
+   Also never chain `item.GetBoundingBox().Inflate(d).Contains(pt)`: `Inflate` returns a reference into the
+   freed temporary and the test silently fails. Assign the box to a variable first.
 3. `zone.GetLayerName()` is misleading for zones; use `zone.GetFirstLayer()` / `GetLayerSet()`.
 4. **`kicad-cli` 9 has no zone-refill option.** Refill in Python: `board.BuildConnectivity()`, then
    `ZONE_FILLER(board).Fill(board.Zones())`, and save. Island removal "always" needs connectivity built first.
@@ -324,6 +366,18 @@ The committed board is a hand-finished, fully clean run, so don't overwrite it u
    - hand-route only the truly long/critical nets (USB pair, +5V highway);
    - autoroute;
    - finish with the maze router.
+13. **No vias in SMD pads (rev 0.4).** JLC doesn't fill vias by default, so solder wicks down the hole and
+    small parts tombstone. `stitch.py`, `final_fixes.py` and `maze_route.py` only avoided *other-net* copper, so
+    they put about 88 GND/signal vias into same-net pads. All three now keep vias 0.1 mm clear of every SMD pad. The DSN
+    says `(via_at_smd off)`, and `check_via_in_pad.py` runs at the end of `pipeline.sh` (expect 0).
+14. **JLC rotations come from the LCSC part's EasyEDA footprint, not KiCad's.** `make_jlc.py` applies a
+    per-LCSC-number table (`JLC_CORR`) of rotation and origin offsets, derived by fitting pads. Key it by LCSC number,
+    not footprint: U1/Q5/U9 share KiCad's SOT-23-6 but need 270/180/270. For LEDs and diodes, use the LCSC
+    symbol's K/A pin names, not pad numbers: the three LEDs' EasyEDA footprints disagree on whether pad 1
+    is the cathode, but all put the cathode at -x, the same as KiCad. A new part with no table entry makes the script fail.
+15. **easyeda2kicad courtyards are the body outline only** (smaller than the pads on DFN/SC-70 parts), so DRC
+    can't catch overlaps. The rev 0.5 imports (TPS22945, WE05DGCF-B, ESD103) have courtyards redrawn at pad
+    extents + 0.25 mm. Using the EasyEDA land itself also makes the JLC correction (0, 0, 0).
 7. **Placement bugs that caused most of the failed routes:**
    - decoupling caps in a row right under the LQFP's bottom pins;
    - the buck's FB/EN resistors on the wrong side of the SOT-23-5;
@@ -380,6 +434,10 @@ $K pcb render --side top --quality high -o pcb_render_top.png lte_board.kicad_pc
   - stop uploading around 3.3 V/cell.
 - **Data:** store readings when coverage fails. The L072CB has 6 KB of EEPROM, 128 KB of flash and 20 KB of RAM; no external
   flash (declined by the owner).
+- **GNSS (optional):** LTE and GNSS can't run concurrently. For a fix: drive **PA15 high** (antenna power),
+  `AT+CGNSPWR=1` / `AT+CGNSS` per the SIM7080 AT manual (V1.03 and V1.05 name it differently), get the fix, power
+  GNSS off, drive PA15 low, then connect LTE. **PB3 low = antenna over-current** (enable the internal pull-up):
+  report a damaged antenna cable and switch the feed off. Keep PA15 low otherwise (the antenna draws 5-25 mA).
 - **SIM:** card detect on PB5, pulled up by R24 = 1M. The holder's switch shorts CD to GND with **no** card and opens with a card, so **PB5 high = card present** (SMN-303 drawing). SIM must be 1.8 V-capable.
 
 ## 9. Open items
@@ -406,16 +464,17 @@ not close the corresponding prototype test. Nothing is marked independently veri
 | H07 | Open | **Layout review:** inspect autorouted traces, especially MCU/U5; inspect buck placement/current loops, modem decoupling, supply paths, RF returns and USB reference continuity. Resolve the README's original 1.5-2 mm modem-supply recommendation versus the implemented 0.6 mm bus with a documented assessment. Existing connectivity checks do not close this review. | README: Before ordering; PCB layout; original layout guidance |
 | H08 | Open | **Sensors:** select temperature/humidity/UV devices; confirm 3.3 V compatibility, I2C addresses (including gauge 0x36), combined pull-ups and active/standby current. Qwiic is always powered; define sensor sleep configuration. | Original §9 item 7; §8 address-clash check; standby-current review added in discussion |
 | H09 | Open | **Low-battery supply margin:** assess the proposed ~3.3 V upload cutoff against TPS7A0233 dropout, selected sensors' supply limits, wiring/FET losses and modem burst sag. Record assumptions for T01/F05; this is a review task, not a confirmed defect. | §4.7/§8 cutoff requirement; review added in discussion |
+| H10 | Open | **Remaining pre-fab audit items (independent audit 2026-10-31; blockers none; via-in-pad, JLC rotations, LSE crystal, L1 land fixed in rev 0.4):** (a) no decoupling near U5 VCCA pin 2 (C20/C35 are about 16 mm away at modem pin 40), so add 100 nF there; (b) the DW01A senses the cell through Q3's body diode until Q5 turns on, so bench-test start-up with a cell at about 3.1 V; (c) D4 reverse leakage (about 3-60 µA, temperature dependent) flows into +5V/R34 on battery, so consider R34 = 10k or a lower-leakage diode; (d) SIM_VDD cap C50 and U7/C51-C53 are 7-10 mm from J8 (SIMCom §3.5.1 says close); (e) vias/pour in the SIM7080G 'forbidden area' (V1.04 Fig. 4), so add an F.Cu keep-out; (f) no test points on +3V3/+3V8/VSYS/VBAT/UART; (g) SIMCom's recommended VBAT TVS and PWRKEY ESD diode are not fitted; (h) C1 10 µF/10 V 0603 derates to about 5 µF at 4.6 V (SY8089 asks for at least 10 µF); (i) reverse battery with USB also attached is unverified on paper, so bench-test it. | Audit report, 2026-10-31 |
 
 ### 9.2 Manufacturing and deployment preparation
 
 | ID | Status | Task / evidence needed | Source |
 |---|---|---|---|
 | M01 | Open; repeat at order time | **Parts availability/cost:** refresh JLC stock and Basic/Extended classifications/setup fees. README stock counts are a historical 2026-10-07 snapshot. | README: Check these before ordering, items 3-4 |
-| M02 | Open; repeat at order time | **Assembly preview/options:** verify rotations/polarity, especially SOT-23/-6, TDFN U8, LEDs and D4; confirm SIM7080G MSL3/X-ray assembly requirements with the assembler. | Original §9 item 4; README ordering checks |
+| M02 | Open; repeat at order time | **Assembly preview/options:** the CPL now carries JLC rotation/offset corrections (`make_jlc.py` `JLC_CORR`, §7.4 lesson 14); still eyeball pin 1/polarity in JLC's preview, especially J9 (+ = pin 1), SOT-23/-6, LEDs and D4; confirm SIM7080G MSL3/X-ray assembly requirements with the assembler. | Original §9 item 4; README ordering checks |
 | M03 | Open | **Battery connector/pack:** confirm J9 pin 1 positive against the chosen pack lead and silkscreen; choose JLC THT assembly or hand-soldering for J9. Retain external charging and the single-cell/parallel-cell architecture. | §4.7; README battery/ordering notes |
 | M04 | Open; repeat after hardware changes and before ordering | **Release checks/files:** run §7.5 ERC, DRC with schematic parity, BOM/CPL regeneration and designator cross-check; review the render and fabrication output. Preserve DNP/copper-only exclusions and order the verified impedance-controlled stackup. Record results for the actual revision being ordered; earlier clean reports are historical. | §7.5; CLAUDE.md verification rules; README ordering instructions |
-| M05 | Open | **Antennas:** select LTE and any needed GNSS antenna, connector/cable and placement; plan LTE pi-match measurement/tuning (R19 = 0R, C40/C41 DNP initially). Validate with the intended enclosure in T05. | Original §9 item 6; README RF/layout guidance |
+| M05 | Open | **Antennas:** select the LTE antenna (U.FL J6 fitted; SMA J10 + R40 as an option) and an *active* GNSS antenna with an SMA plug (not RP-SMA) that runs from 3.3 V at ≤ 25 mA; placement; plan LTE pi-match measurement/tuning (R19 = 0R, C40/C41 DNP initially). Check the hand-soldered Amphenol 132322 fit on the first board. Validate with the intended enclosure in T05. | Original §9 item 6; README RF/layout guidance; rev 0.5 |
 | M06 | Open | **Enclosure/mounting:** choose enclosure and sensor mounting; check connector/card access, antenna placement and four M2 holes (2.2 mm) with screw-head clearance. Tidy overlapping silkscreen references. | Original §9 item 7; §4.1/§6; README layout guidance |
 
 ### 9.3 Firmware implementation (none yet; see §8 for pin-level requirements)
