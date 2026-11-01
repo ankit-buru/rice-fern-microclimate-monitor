@@ -28787,7 +28787,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
+		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
 			(at 20.32 111.76 0)
 			(effects
 				(font
@@ -28805,7 +28805,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" ""
+		(property "Description" "buck input cap; 25 V 0805 keeps more of its 10 uF at 4.6 V than a 10 V 0603"
 			(at 20.32 111.76 0)
 			(effects
 				(font
@@ -28814,7 +28814,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C19702"
+		(property "LCSC" "C15850"
 			(at 20.32 111.76 0)
 			(effects
 				(font
@@ -28823,7 +28823,7 @@
 				(hide yes)
 			)
 		)
-		(property "MPN" "CL10A106KP8NNNC"
+		(property "MPN" "CL21A106KAYNNNE"
 			(at 20.32 111.76 0)
 			(effects
 				(font
@@ -34666,6 +34666,637 @@
 			(project "lte_board"
 				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
 					(reference "#PWR136")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(wire
+		(pts
+			(xy 330.2 336.55) (xy 330.2 334.01)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "500047c8-71d4-4709-8a28-7ffe5e41a3f3")
+	)
+	(label "VDD_EXT"
+		(at 330.2 334.01 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "81fe66e9-c6f3-4802-8337-36b2ec68cb49")
+	)
+	(wire
+		(pts
+			(xy 330.2 344.17) (xy 330.2 346.71)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "92396712-642f-4874-bbae-edd9e451932e")
+	)
+	(wire
+		(pts
+			(xy 346.71 340.36) (xy 344.17 340.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "3700ff58-9601-4d18-a1c2-e063de501af8")
+	)
+	(wire
+		(pts
+			(xy 344.17 340.36) (xy 344.17 337.82)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "8efa725c-0ec0-4c8d-8c0f-c92064c24051")
+	)
+	(wire
+		(pts
+			(xy 354.33 340.36) (xy 356.87 340.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "94c591a6-4aab-45ff-81a1-8bcc7b3b2e22")
+	)
+	(wire
+		(pts
+			(xy 356.87 340.36) (xy 356.87 342.9)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a62d0476-14ad-4c72-ad78-11a743272d27")
+	)
+	(wire
+		(pts
+			(xy 372.11 340.36) (xy 369.57 340.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "01592c29-2c8e-4eee-aa1c-09d2bdd70dd1")
+	)
+	(label "MDM_PWRKEY"
+		(at 369.57 340.36 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "e2b1dab4-cd78-46fb-a22c-79acda8559e9")
+	)
+	(wire
+		(pts
+			(xy 379.73 340.36) (xy 382.27 340.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ef974c15-810c-4b48-8afa-135f3bc59ad4")
+	)
+	(wire
+		(pts
+			(xy 382.27 340.36) (xy 382.27 342.9)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "636c285e-beb3-4f1e-877e-18abc4a63f6c")
+	)
+	(symbol
+		(lib_id "lte_board:C")
+		(at 330.2 340.36 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "fa7d8ba8-d505-43d3-b71f-c939b3c4611b")
+		(property "Reference" "C62"
+			(at 332.232 339.09 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "100nF"
+			(at 332.232 341.63 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
+			(at 330.2 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 330.2 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "U5 VCCA (pin 2) decoupling, at the pin"
+			(at 330.2 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C1525"
+			(at 330.2 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "CL05B104KO5NNNC"
+			(at 330.2 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "9284421c-c246-4669-a8ff-fc180d4d6258")
+		)
+		(pin "2"
+			(uuid "dbb9f0c3-88b1-4105-a392-c0ddade111cf")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "C62")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:GND")
+		(at 330.2 346.71 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "b4680e93-1f8e-4809-8d69-42a2f1085ecb")
+		(property "Reference" "#PWR137"
+			(at 330.2 346.71 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 330.2 346.71 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 330.2 346.71 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 330.2 346.71 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 330.2 346.71 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "63f451c4-513a-4126-b741-5166709c50ec")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "#PWR137")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:D_TVS")
+		(at 350.52 340.36 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "14dc70c3-9661-434f-9115-e4e4ec090081")
+		(property "Reference" "D7"
+			(at 352.552 339.09 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "ESD5651N-2/TR"
+			(at 352.552 341.63 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "lte_board_lcsc:DFN1006-2L-BI-1"
+			(at 350.52 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 350.52 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "VBAT TVS, VRWM 4.5 V, 35 A 8/20 us (SIM7080G HD V1.05 Table 8)"
+			(at 350.52 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C239784"
+			(at 350.52 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "ESD5651N-2/TR"
+			(at 350.52 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "65ac6837-928a-459e-ac65-95b55c5f6605")
+		)
+		(pin "2"
+			(uuid "baf6c2d2-2dd1-4e45-9f9a-4da84181d159")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "D7")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:+3V8")
+		(at 344.17 337.82 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "84f27297-71fb-46d3-98e6-636b8c79b7c3")
+		(property "Reference" "#PWR138"
+			(at 344.17 337.82 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "+3V8"
+			(at 344.17 337.82 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 344.17 337.82 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 344.17 337.82 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 344.17 337.82 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "972a9de0-0024-4c80-a38e-29999e0bfea6")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "#PWR138")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:GND")
+		(at 356.87 342.9 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "3bd5aff8-48e4-4d9a-b762-8cbe898fc432")
+		(property "Reference" "#PWR139"
+			(at 356.87 342.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 356.87 342.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 356.87 342.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 356.87 342.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 356.87 342.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "10b543c7-cc9d-4a95-add4-8d788af34c6e")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "#PWR139")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:D_TVS")
+		(at 375.92 340.36 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "fefd07f0-9c65-4906-9e89-21804fdad164")
+		(property "Reference" "D8"
+			(at 377.952 339.09 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "WE05DGCF-B"
+			(at 377.952 341.63 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "lte_board_lcsc:DFN1006-2L-BI"
+			(at 375.92 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 375.92 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "PWRKEY ESD diode (SIM7080G HD V1.05 3.2.1), VRWM 5 V"
+			(at 375.92 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C3039401"
+			(at 375.92 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "WE05DGCF-B"
+			(at 375.92 340.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "e2ba3fb4-54dc-471e-a5e7-4ea548c31e39")
+		)
+		(pin "2"
+			(uuid "2869e602-b00d-470c-86f8-cc7963169180")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "D8")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "lte_board:GND")
+		(at 382.27 342.9 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "a079215c-b623-4d45-9a60-6aceadcd81ef")
+		(property "Reference" "#PWR140"
+			(at 382.27 342.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 382.27 342.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 382.27 342.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 382.27 342.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 382.27 342.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "8149a3d6-d395-4c92-a9a7-b1e9613b4783")
+		)
+		(instances
+			(project "lte_board"
+				(path "/7ded1cb8-0547-516d-a7f6-d4c083a7d11d"
+					(reference "#PWR140")
 					(unit 1)
 				)
 			)

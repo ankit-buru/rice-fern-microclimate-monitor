@@ -92,7 +92,12 @@ checking its reason first. Several were explicit choices by the project owner.
 - **32.768 kHz crystal Y1 on PC14/PC15 (added rev 0.4, owner's choice after the audit):** without it the RTC
   runs on the LSI, which varies by tens of percent, which is too poor for 15-minute timestamps. Y1 is a Seiko SC-32S (C97604):
   7 pF load and ±20 ppm. A low-CL part keeps the L0's LSE drive (and current) low. C54/C55 = 10 pF C0G: 10 pF in
-  series plus about 2 pF stray gives about 7 pF. Firmware: enable the LSE at medium-high drive first, measure, then try lower.
+  series plus about 2 pF stray gives about 7 pF.
+  - **Drive level (checked 2026-11-01):** SC-32S datasheet ESR 70 kΩ max, C0 1.0 pF, so gmcrit = 4·ESR·(2πf)²·(C0+CL)²
+    = 0.76 µA/V. AN2867 Rev 25 Table 5 gives the L0's Gm_crit_max as 0.5 / 0.75 / 1.7 / 2.7 µA/V (low / medium-low /
+    medium-high / high). **Firmware must use medium-high (LSEDRV = 10) or high**; medium-low is just short. AN2867 Table 7
+    lists the SC-32S as L0-compatible.
+  - The datasheet says "no pattern under SC-32S": `preroute.py` adds an F.Cu keep-out between its pads (`crystal_Y1_keepout`).
 
 ### 4.4 One USB-C port for two devices
 - **Chosen:** 3-pad solder jumpers JP3 (D+) / JP4 (D-), pre-bridged 1-2 = MCU; re-bridge 2-3 for the modem.
@@ -182,7 +187,8 @@ checking its reason first. Several were explicit choices by the project owner.
     supply of the active antenna should be controlled and closed".
   - **LTE and GNSS can't run at the same time** (V1.05: shared Qualcomm RX hardware), and GNSS is off by default.
     LTE works without a GNSS antenna.
-- RF feeds are hand-routed at 0.35 mm, an estimate for 50 Ω (§9). In1 is solid GND under the RF half. The SMA
+- RF feeds are hand-routed at **0.30 mm** with the 0.2 mm GND-pour gap: 49 Ω on JLC04161H-7628 (2D field solve with
+  solder mask, H06; 0.35 mm gave 45.6 Ω). In1 is solid GND under the RF half. The SMA
   centre pads have **no In1/In2 copper underneath** (`sma_ref_cutout_J7/J10`): a 1.5 mm pad 0.2 mm over In1 is
   about 20 Ω; with the cut-out it references the coplanar ground pads and B.Cu.
 - **SMA footprint** `SMA_Amphenol_132322_EdgeMount`, from drawing 132322 rev D's recommended layout. The drawing
@@ -190,7 +196,8 @@ checking its reason first. Several were explicit choices by the project owner.
   meets the 0.25 mm copper-edge rule. No paste (hand-soldered); excluded from the BOM and CPL. Check the fit on
   the first board before ordering more.
 - **SIM:** the 22R series resistors R21-R23 sit vertically in the 2.6 mm gap between modem pins 15-17 and the
-  SIM contacts. The SIM7080G supports **1.8 V SIM cards only**.
+  SIM contacts. Rev 0.6 (H10d): the 33 pF filters C51-C53 and SIM_VDD cap C50 stand directly above their J8
+  contacts (about 1.5 mm away), each GND pad up to its own via; the ESD array U7 sits just left of R21-R23. The SIM7080G supports **1.8 V SIM cards only**.
 - **SIM holder (XunPu SMN-303) mechanics, checked against the manufacturer drawing (Rev A):**
   - The card inserts from the end opposite the contact row, which faces the board's bottom edge. The holder's
     front face is **2.35 mm** in from the edge (owner's choice, 2026-10-30), so the locked card sits fully over
@@ -202,8 +209,8 @@ checking its reason first. Several were explicit choices by the project owner.
     adds them as F.Cu keep-outs (`sim_spring_keepout_1..6`: no tracks, vias or pour), so DRC, the autorouter,
     `stitch.py` and the maze router all respect them.
   - Card detect: the CD switch is closed to GND with no card and open with a card inserted.
-- **USB to the modem:** a coupled pair on B.Cu, 0.30 mm / 0.15 mm gap (my estimate for ~90 Ω on JLC04161H-7628;
-  **verify**). In2 has a track keep-out under it. The MCU side of the jumpers is plain autorouted (USB FS).
+- **USB to the modem:** a coupled pair on B.Cu, **0.25 mm / 0.20 mm gap**: 92 Ω differential on JLC04161H-7628
+  (field solve, H06; the earlier 0.30/0.15 gave 80 Ω). In2 has a track keep-out under it. The MCU side of the jumpers is plain autorouted (USB FS).
 
 ## 5. Power budget (summary)
 
@@ -228,7 +235,9 @@ The modem is off between uploads; the figures are at the 5 V/VSYS level, and the
 
 ## 6. PCB
 
-- **Stackup:** 4-layer, JLC04161H-7628 assumed.
+- **Stackup:** 4-layer **JLC04161H-7628**: what JLC builds for a 4-layer 1.6 mm order with no impedance
+  requirement (owner's choice 2026-11-01: no paid impedance control). 0.2104 mm 7628 prepreg (Er 4.4) between each
+  outer layer and its plane, 1.065 mm core, 1 oz outer / 0.5 oz inner copper (jlcpcb.com/impedance).
   - **F.Cu:** components, signals, GND pour.
   - **In1:** solid GND, with a track keep-out for x >= 38.5 mm (the modem/RF/SIM/buck half).
   - **In2:** signals + GND pour, a +3V8 strip from the buck to the modem VBAT pins, and a track keep-out under the USB pair.
@@ -244,8 +253,8 @@ The modem is off between uploads; the figures are at the 5 V/VSYS level, and the
     | VBAT | 0.6 mm | +3V8 |
     | Power | 0.3 mm | +5V, +3V3, BUCK_SW |
     | Batt | 0.4 mm | BATT_IN, BATT_N, VBAT, VSYS |
-    | RF | 0.35 mm | RF feeds |
-    | USB | 0.30 mm / 0.15 mm gap | USB pair |
+    | RF | 0.30 mm | RF feeds |
+    | USB | 0.25 mm / 0.20 mm gap | USB pair |
     | Long | default | the long-run nets (`mkpro.py` LONG list; used by an abandoned two-stage experiment) |
 
 - **Hand-routed in `preroute.py`, all locked:**
@@ -307,9 +316,9 @@ The modem is off between uploads; the figures are at the 5 V/VSYS level, and the
 | `silk_marks.py board` | KiCad python | "+ J9 -" / "BAT 3.0-4.2V" silkscreen |
 | `mkpro.py lte_board.kicad_pro` | python3 | Writes design rules and net classes into the project file |
 | `make_jlc.py netlist pos.csv outdir` | python3 | `bom_jlcpcb.csv` + `cpl_jlcpcb.csv`; fails on a missing LCSC #; reports BOM/CPL mismatches |
-| `hand_fix_sim_rst.py board` | KiCad Python | One-off fix for the rev 0.4 route only: finished /SIM_RST at U7 pad 4. **Not used for rev 0.5** (that route connects it); kept for reference |
+| `hand_fix_sim_rst.py board` | KiCad Python | One-off fix for the rev 0.4 route only: finished /SIM_RST at U7 pad 4. **Not used since rev 0.5** (that route connects it); kept for reference |
 | `check_via_in_pad.py board` | KiCad Python | Lists vias touching any SMD pad (run by `pipeline.sh`; expect 0) |
-| `sch_rev02.py` ... `sch_rev05.py` | python3 | The schematic edits for each revision (already applied; reference for how to edit the schematic by script). rev05 = antenna ESD, GNSS bias tee, SMA jacks |
+| `sch_rev02.py` ... `sch_rev06.py` | python3 | The schematic edits for each revision (already applied; reference for how to edit the schematic by script). rev05 = antenna ESD, GNSS bias tee, SMA jacks; rev06 = audit parts (C62, D7, D8, C1 0805) |
 
 Typical run:
 
@@ -376,7 +385,7 @@ The committed board is a hand-finished, fully clean run, so don't overwrite it u
     symbol's K/A pin names, not pad numbers: the three LEDs' EasyEDA footprints disagree on whether pad 1
     is the cathode, but all put the cathode at -x, the same as KiCad. A new part with no table entry makes the script fail.
 15. **easyeda2kicad courtyards are the body outline only** (smaller than the pads on DFN/SC-70 parts), so DRC
-    can't catch overlaps. The rev 0.5 imports (TPS22945, WE05DGCF-B, ESD103) have courtyards redrawn at pad
+    can't catch overlaps. The rev 0.5/0.6 imports (TPS22945, WE05DGCF-B, ESD103, ESD5651N) have courtyards redrawn at pad
     extents + 0.25 mm. Using the EasyEDA land itself also makes the JLC correction (0, 0, 0).
 7. **Placement bugs that caused most of the failed routes:**
    - decoupling caps in a row right under the LQFP's bottom pins;
@@ -457,14 +466,14 @@ not close the corresponding prototype test. Nothing is marked independently veri
 |---|---|---|---|
 | H01 | Reported; evidence pending | **SY8089AAAC (C78988) 100% duty cycle:** owner reports support. Record the exact datasheet revision/page and low-input-voltage behavior, then update the uncertainty in §4.7 and the README block overview. If the exact part does not meet the requirement, review an alternative before changing the design. Low-battery operation still needs T01. | Original §9 item 1; §4.7; README block overview |
 | H02 | Open | **DW01A (C351410) / FS8205A (C908265):** check exact-part values, protection thresholds, SOT-23-6 pinout and actual symbol-to-pad connections against datasheets. Do not substitute the TSSOP-8 pinout. | Original §9 item 2; §4.7 |
-| H03 | Open | **MAX17048 (C2682616):** verify VDD bypass value and exposed-pad land pattern/pin connections against the exact package documentation. | Original §9 item 2 |
+| H03 | Land verified from documentation (2026-11-01); bypass value open | **MAX17048 (C2682616):** Evidence: Maxim outline 21-0168 rev M (T822-3: EP 0.80 × 1.20, b 0.25, L 0.20-0.40) and land pattern 90-0065 rev E. The LCSC land had short pads (0.28 × 0.425, little toe) and a 1.2 mm EP; the footprint now uses Maxim's land: 0.30 × 0.70 pads on 1.98 mm row centres, EP 0.80 × 1.38. Still open: VDD bypass (datasheet 0.1 µF, C44 = 1 µF). | Original §9 item 2 |
 | H04 | Open | **U7 ESDA6V1W5:** confirm pin 2 ground and pins 1/3/4/5 I/O against ST's datasheet; the earlier check used a pin-compatible second source. Compare with the actual footprint. | README: Check these before ordering, item 1 |
 | H05 | Verified from documentation (2026-10-30); hardware test pending (T02) | **J8 SMN-303:** Evidence: XunPu SMN-303 drawing (Rev A, linked in DATASHEETS.md). Contact order C3/C7/C2/C6/C1/C5/CD, 2 × 6.50 mm and 12.00 mm tab spacing and the two Ø0.75 mm pegs match the footprint; CD is normally shorted to GND and opens with a card (PB5 high = card present); card inserts from the bottom edge; the drawing's six no-copper areas are now keep-outs. Minor: the drawing's contact row sits about 0.14 mm further from the tabs than the LCSC footprint's pads, which is well inside the pads' length. Original task: verify the already-renumbered footprint against the holder drawing: 1/2/3/5/6/7 = SIM C1/C2/C3/C5/C6/C7, 8 = card detect, 9-11 = shell ground; confirm locating pegs and inserted-card detect polarity. Hardware verification is T02. | README: ordering checks and footprint fixes |
-| H06 | Open | **Stackup and impedance:** confirm the actual fabrication stackup and calculate RF 50 Ω and USB 90 Ω differential geometry, including reference planes and adjacent ground. Current 0.35 mm RF and 0.30/0.15 mm USB width/gap are estimates. Update geometry/rules if required. | Original §9 item 3; §4.9; README impedance and original layout guidance |
+| H06 | Calculated (2026-11-01); hardware not measured | **Result:** stackup JLC04161H-7628 (no-requirement default). Quasi-static 2D finite-difference solve incl. solder mask (Er 3.8) and the 0.2 mm coplanar GND pour, checked against Hammerstad-Jensen (51.0 vs 51.7 Ω): RF 0.30 mm = 49.2 Ω (was 0.35 mm = 45.6 Ω); USB pair 0.25/0.20 = 92 Ω (was 0.30/0.15 = 80 Ω). Tolerances (JLC: ±20% width, unstated prepreg) move RF between about 44 and 53 Ω. Applied in rev 0.6. Original task: **Stackup and impedance:** confirm the actual fabrication stackup and calculate RF 50 Ω and USB 90 Ω differential geometry, including reference planes and adjacent ground. Current 0.35 mm RF and 0.30/0.15 mm USB width/gap are estimates. Update geometry/rules if required. | Original §9 item 3; §4.9; README impedance and original layout guidance |
 | H07 | Open | **Layout review:** inspect autorouted traces, especially MCU/U5; inspect buck placement/current loops, modem decoupling, supply paths, RF returns and USB reference continuity. Resolve the README's original 1.5-2 mm modem-supply recommendation versus the implemented 0.6 mm bus with a documented assessment. Existing connectivity checks do not close this review. | README: Before ordering; PCB layout; original layout guidance |
 | H08 | Open | **Sensors:** select temperature/humidity/UV devices; confirm 3.3 V compatibility, I2C addresses (including gauge 0x36), combined pull-ups and active/standby current. Qwiic is always powered; define sensor sleep configuration. | Original §9 item 7; §8 address-clash check; standby-current review added in discussion |
 | H09 | Open | **Low-battery supply margin:** assess the proposed ~3.3 V upload cutoff against TPS7A0233 dropout, selected sensors' supply limits, wiring/FET losses and modem burst sag. Record assumptions for T01/F05; this is a review task, not a confirmed defect. | §4.7/§8 cutoff requirement; review added in discussion |
-| H10 | Open | **Remaining pre-fab audit items (independent audit 2026-10-31; blockers none; via-in-pad, JLC rotations, LSE crystal, L1 land fixed in rev 0.4):** (a) no decoupling near U5 VCCA pin 2 (C20/C35 are about 16 mm away at modem pin 40), so add 100 nF there; (b) the DW01A senses the cell through Q3's body diode until Q5 turns on, so bench-test start-up with a cell at about 3.1 V; (c) D4 reverse leakage (about 3-60 µA, temperature dependent) flows into +5V/R34 on battery, so consider R34 = 10k or a lower-leakage diode; (d) SIM_VDD cap C50 and U7/C51-C53 are 7-10 mm from J8 (SIMCom §3.5.1 says close); (e) vias/pour in the SIM7080G 'forbidden area' (V1.04 Fig. 4), so add an F.Cu keep-out; (f) no test points on +3V3/+3V8/VSYS/VBAT/UART; (g) SIMCom's recommended VBAT TVS and PWRKEY ESD diode are not fitted; (h) C1 10 µF/10 V 0603 derates to about 5 µF at 4.6 V (SY8089 asks for at least 10 µF); (i) reverse battery with USB also attached is unverified on paper, so bench-test it. | Audit report, 2026-10-31 |
+| H10 | (a) (d) (e) (g) (h) fixed in rev 0.6; (b) (c) (f) (i) open | **rev 0.6 (2026-11-01):** (a) C62 100 nF at U5 pin 2; (d) C50-C53 above the J8 contacts, U7 beside R21-R23; (e) `modem_forbidden_area` F.Cu keep-out from V1.05 Fig. 4 (2.15 × 5.3 mm inside the pad ring's top-right corner; five stitching vias used to sit there); (g) D7 ESD5651N-2/TR (C239784, V1.05 Table 8) on the VBAT bus, D8 WE05DGCF-B on PWRKEY by pin 39; (h) C1 = CL21A106KAYNNNE 10 µF 25 V 0805 (C15850). **Remaining pre-fab audit items (independent audit 2026-10-31; blockers none; via-in-pad, JLC rotations, LSE crystal, L1 land fixed in rev 0.4):** (a) no decoupling near U5 VCCA pin 2 (C20/C35 are about 16 mm away at modem pin 40), so add 100 nF there; (b) the DW01A senses the cell through Q3's body diode until Q5 turns on, so bench-test start-up with a cell at about 3.1 V; (c) D4 reverse leakage (about 3-60 µA, temperature dependent) flows into +5V/R34 on battery, so consider R34 = 10k or a lower-leakage diode; (d) SIM_VDD cap C50 and U7/C51-C53 are 7-10 mm from J8 (SIMCom §3.5.1 says close); (e) vias/pour in the SIM7080G 'forbidden area' (V1.04 Fig. 4), so add an F.Cu keep-out; (f) no test points on +3V3/+3V8/VSYS/VBAT/UART; (g) SIMCom's recommended VBAT TVS and PWRKEY ESD diode are not fitted; (h) C1 10 µF/10 V 0603 derates to about 5 µF at 4.6 V (SY8089 asks for at least 10 µF); (i) reverse battery with USB also attached is unverified on paper, so bench-test it. | Audit report, 2026-10-31 |
 
 ### 9.2 Manufacturing and deployment preparation
 

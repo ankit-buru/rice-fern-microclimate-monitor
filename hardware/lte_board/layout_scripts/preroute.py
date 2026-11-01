@@ -12,7 +12,7 @@ def pad(ref, num):
     raise KeyError((ref, num))
 def pos(ref, num):
     q = pad(ref, num).GetPosition(); return (ToMM(q.x) - OX, ToMM(q.y) - OY)
-def track(pts, net, w=0.35, layer=pcbnew.F_Cu):
+def track(pts, net, w=0.30, layer=pcbnew.F_Cu):     # default = RF: 0.30 mm ~ 49 ohm CPWG on JLC04161H-7628
     n = b.FindNet(net)
     for a, c in zip(pts, pts[1:]):
         t = pcbnew.PCB_TRACK(b); t.SetStart(P(*a)); t.SetEnd(P(*c)); t.SetWidth(FromMM(w))
@@ -50,10 +50,11 @@ track([cb, (j7[0], YG), j7in], "/GNSS_ANT")
 for ref, net in (("C59", "/MDM_GNSS"), ("C58", "/GNSS_MATCH"), ("L2", "/GNSS_ANT"), ("D5", "/GNSS_ANT")):
     q = pos(ref, "1"); track([q, (q[0], YG)], net)
 for ref, (dx, dy) in (("C59", (0, -0.7)), ("C58", (0, -0.7)), ("D5", (0, 0.73)),     # bias-switch GND pads get their own
-                      ("C57", (0, 0.75)), ("U10", (0, 0.81)), ("C60", (0.87, 0))):    # vias: the pour here is too narrow
+                      ("C57", (0, 0.75)), ("U10", (0, 0.81)), ("C60", (0.87, 0)),     # vias: the pour here is too narrow
+                      ("R39", (0, -0.8))):
     q = pos(ref, "2"); via(q[0] + dx, q[1] + dy); track([q, (q[0] + dx, q[1] + dy)], "GND", w=0.3)
 # ---- RF ground stitching (In1 is solid GND); J7 grounds: one via outboard of each top ground pad
-for x, y in [(45.0, 8.6), (46.4, 8.5), (44.6, 4.7), (47.0, 4.4), (25.6, 1.0)]:
+for x, y in [(45.0, 8.6), (46.4, 8.5), (44.6, 4.7), (25.6, 1.0)]:     # (47.0, 4.4) became D7's GND via
     via(x + DX, y)
 for dx in (-3.52 - 0.55, 3.52 + 0.55):
     via(j7[0] + dx, 2.5)
@@ -103,7 +104,7 @@ def offset(pts, d):
         m = (n1[0] + n2[0], n1[1] + n2[1]); k = d / (1 + n1[0] * n2[0] + n1[1] * n2[1])
         out.append((p[0] + k * m[0], p[1] + k * m[1]))
     return out
-WP, GP = 0.3, 0.15                     # ~90 ohm coupled microstrip on JLC04161H-7628 (verify!)
+WP, GP = 0.25, 0.20                    # ~92 ohm coupled microstrip on JLC04161H-7628 (2D field solve, DESIGN.md H06)
 a6, b6, a7, b7 = (pos("J1", n) for n in ("A6", "B6", "A7", "B7"))
 padl = ToMM(pad("J1", "A6").GetBoundingBox().GetLeft()) - OX
 xdn, xdp = padl - 0.45, padl - 1.25     # via columns under the receptacle body
@@ -179,6 +180,42 @@ for n, net in (("39", "/MDM_PWRKEY"), ("40", "/VDD_EXT"), ("41", "/MDM_NETLIGHT"
 
 # ---- U1 GND pin is boxed in by the USB flow-through traces: give it its own via
 g2 = pos("U1", "2"); via(g2[0] + 1.14, g2[1]); track([g2, (g2[0] + 1.14, g2[1])], "GND", w=0.3)
+
+# ---- rev 0.6 audit fixes (DESIGN.md H10)
+def keepout(name, x0, y0, x1, y1):
+    """F.Cu rule area: no tracks, vias or pour (pads allowed)"""
+    kz = pcbnew.ZONE(b); kz.SetIsRuleArea(True); kz.SetZoneName(name)
+    ls = pcbnew.LSET(); ls.AddLayer(pcbnew.F_Cu); kz.SetLayerSet(ls)
+    kz.SetDoNotAllowTracks(True); kz.SetDoNotAllowVias(True); kz.SetDoNotAllowCopperPour(True)
+    kz.SetDoNotAllowPads(False); kz.SetDoNotAllowFootprints(False)
+    ol = kz.Outline(); ol.NewOutline()
+    for x, y in ((x0, y0), (x1, y0), (x1, y1), (x0, y1)): ol.Append(FromMM(OX + x), FromMM(OY + y))
+    b.Add(kz)
+# SIM7080G HD V1.05 Fig. 4 "Forbidden Area": 2.15 x 5.3 mm hatched box inside the top-right corner of the pad ring,
+# from 1.0 to 3.15 mm left of the right column (pin 33) and 1.28 to 6.55 mm below the top row (pin 34) (scaled from the
+# drawing using the 1.10 / 2.75 / 3.45 mm pad spacings it dimensions)
+p33, p34 = pos("U6", "33"), pos("U6", "34")
+keepout("modem_forbidden_area", p33[0] - 3.16, p34[1] + 1.28, p33[0] - 1.0, p34[1] + 6.55)
+# SC-32S datasheet: "no pattern under SC-32S" -> keep F.Cu clear between the crystal pads
+y1a, y1b = pad("Y1", "1"), pad("Y1", "2")
+bb1, bb2 = y1a.GetBoundingBox(), y1b.GetBoundingBox()
+top, bot = sorted((bb1, bb2), key=lambda q: q.GetTop())
+keepout("crystal_Y1_keepout", ToMM(top.GetLeft()) - OX, ToMM(top.GetBottom()) - OY + 0.1,
+        ToMM(top.GetRight()) - OX, ToMM(bot.GetTop()) - OY - 0.1)
+# H10a: C62 at U5 VCCA (pin 2)
+q = pos("C62", "1"); track([pos("U5", "2"), q], "/VDD_EXT", w=0.25)
+q = pos("C62", "2"); via(q[0], q[1] + 1.1); track([q, (q[0], q[1] + 1.1)], "GND", w=0.3)   # via below: the B.Cu USB pair runs at y 14.25-14.7
+# H10d: SIM caps above the J8 contacts, GND pad (top) up to its own via; U7 GND via to the left
+for ref in ("C52", "C51", "C53", "C50"):
+    q = pos(ref, "2"); via(q[0], q[1] - 0.77); track([q, (q[0], q[1] - 0.77)], "GND", w=0.3)
+q = pos("U7", "2"); via(q[0] - 1.1, q[1]); track([q, (q[0] - 1.1, q[1])], "GND", w=0.3)   # SC-70 pads are 1.32 mm long
+# MCU VSS pin 23 can end up on an orphan pour island between autorouted tracks: give it its own via
+q = pos("U4", "23"); via(q[0], q[1] + 1.2); track([q, (q[0], q[1] + 1.2)], "GND", w=0.3)
+# H10g: D7 VBAT TVS hangs off the VBAT bus (y = YB) below C31; D8 on PWRKEY next to pin 39's escape via
+q = pos("D7", "1"); track([q, (q[0], YB)], "+3V8", w=0.4)
+q = pos("D7", "2"); via(q[0] + 0.8, q[1]); track([q, (q[0] + 0.8, q[1])], "GND", w=0.3)
+q = pos("D8", "1"); track([(pos("U6", "39")[0], 1.85), q], "/MDM_PWRKEY", w=0.2)
+q = pos("D8", "2"); via(q[0] - 0.83, q[1]); track([q, (q[0] - 0.83, q[1])], "GND", w=0.3)
 
 E = 0.3
 # In1: solid GND

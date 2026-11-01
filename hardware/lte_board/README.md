@@ -30,12 +30,12 @@ Scope: schematic, BOM, and a **draft PCB layout** (`lte_board.kicad_pcb`, see [P
   - **U2 SY8089 buck** makes +3V8 (3.93V) for modem VBAT from VSYS. Below about 3.9V on the cell it runs at maximum duty and passes VSYS through (confirm 100% duty-cycle support in the SY8089 datasheet). The modem accepts 2.7-4.8V. Its EN pin is driven by MCU **PB1**, so firmware can hard power-cycle the modem; R6 keeps the modem off until firmware enables it.
   - **U3 TPS7A0233 LDO** makes +3V3 from VSYS for the MCU, level shifter, LEDs and sensors. Its 25 nA quiescent current keeps it out of the sleep budget (the ME6211 it replaced drew about 40 uA).
   - The MCU drives the buck EN through **R28 (1k)**, so **JP5** can force the 3.8V rail on without fighting a driven pin.
-- **MCU:** STM32L072CBT6, with crystal-less USB FS and a **32.768 kHz crystal Y1** (C54/C55 = 10 pF) on PC14/PC15 for an accurate RTC. It can be programmed over **USB with ST's built-in DFU bootloader** (hold **SW2 BOOT0**, tap **SW1 RESET**, then flash with STM32CubeProgrammer or `dfu-util`) or over SWD (J2, 10-pin 1.27mm Cortex header). R10 pulls BOOT0 low for normal boot.
+- **MCU:** STM32L072CBT6, with crystal-less USB FS and a **32.768 kHz crystal Y1** (C54/C55 = 10 pF) on PC14/PC15 for an accurate RTC (firmware: LSE drive **medium-high or high**; see DESIGN.md §4). It can be programmed over **USB with ST's built-in DFU bootloader** (hold **SW2 BOOT0**, tap **SW1 RESET**, then flash with STM32CubeProgrammer or `dfu-util`) or over SWD (J2, 10-pin 1.27mm Cortex header). R10 pulls BOOT0 low for normal boot.
 - **Level shifting:** the modem's logic is **1.8V** (2.1V absolute max). U5 TXS0108E translates all 8 UART/status lines between 3.3V and the modem's VDD_EXT (1.8V). OE is tied to VDD_EXT, so the shifter goes Hi-Z whenever the modem is off and nothing back-powers it.
   - **R29/R30/R31** (100k, pull-up) on RXD, DCD and CTS, and **R32** (100k, pull-down) on RI, hold the MCU-side lines in a safe state while the shifter is Hi-Z. SIMCom requires at least 47k on these lines with a shifter IC (V1.04 section 3.3); don't use the STM32's internal pulls (about 40k) instead.
 - **Modem:** SIM7080G.
-  - VBAT decoupling: 100uF + 10uF + 100nF + 33pF + 10pF, per SIMCom guidance.
-  - **PWRKEY** is pulled low by NPN Q1 (MCU **PB0** high = button pressed). **NETLIGHT** drives a green LED via Q2.
+  - VBAT decoupling: 100uF + 10uF + 100nF + 33pF + 10pF, plus the **D7** TVS (ESD5651N-2/TR), per SIMCom guidance.
+  - **PWRKEY** is pulled low by NPN Q1 (MCU **PB0** high = button pressed), with ESD diode **D8** at the module pin. **NETLIGHT** drives a green LED via Q2.
   - **JP2** (+ R26 10k, per SIMCom) straps BOOT_CFG to VDD_EXT for USB download mode. Leave it open for normal use.
   - **R27** pulls the STATUS line low so the MCU reads "off" when the modem is unpowered and the level shifter is Hi-Z.
 - **USB select (one USB-C port, two devices):** USB-C D+/D- go through the 3-pad solder jumpers **JP3 (D+)** and **JP4 (D-)**.
@@ -113,6 +113,8 @@ easyeda2kicad --footprint --3d --lcsc_id=C145956  --output ./lte_board_lcsc   # 
 easyeda2kicad --footprint --3d --lcsc_id=C47507   --output ./lte_board_lcsc   # U10 TPS22945 (courtyard redrawn to pads + 0.25)
 easyeda2kicad --footprint --3d --lcsc_id=C3039401 --output ./lte_board_lcsc   # D5 WE05DGCF-B (courtyard redrawn)
 easyeda2kicad --footprint --3d --lcsc_id=C535146  --output ./lte_board_lcsc   # D6 ESD103-B1-02EL (courtyard redrawn)
+easyeda2kicad --footprint --3d --lcsc_id=C239784  --output ./lte_board_lcsc   # D7 ESD5651N-2/TR (courtyard redrawn)
+# U8 MAX17048_TDFN-8_2x2mm: pads/EP replaced with Maxim land pattern 90-0065 rev E
 # J7/J10 SMA_Amphenol_132322_EdgeMount is hand-made from Amphenol drawing 132322 rev D (no EasyEDA footprint)
 ```
 
@@ -150,23 +152,22 @@ or Footprint Assignment.
   - **Battery block** (bottom left): J9, Q3, U9/Q5 protector, U8 fuel gauge. **USB/battery OR-ing** (D4, Q4, R34) sits between SW2 and the SIM holder; the LDO U3 (with C4/C5) is in the bottom-right corner by the buck. The SIM holder's opening is at the bottom edge, and six top-layer keep-outs (from the SMN-303 drawing's "no pattern and via hole" areas) keep copper and vias out from under its contact springs.
   - **USB select jumpers JP4 (D-) / JP3 (D+)** sit just right of the USB ESD chip U1 (pad 1 = MCU side, pad 3 = modem side). **JP5** (modem power override) is under the MCU. **TP4** (GND) is next to **TP2** (PWRKEY), for starting the modem by hand.
 - **Hand-routed:**
-  - LTE and GNSS RF feeds (0.35 mm).
+  - LTE and GNSS RF feeds (0.30 mm, about 49 ohm).
   - VBAT bus (0.6 mm) from pins 34/35 to all the VBAT caps.
   - USB D+/D-: J1 to U1 (flow-through) to the select jumpers on F.Cu. From the jumpers' modem side, a coupled pair runs on B.Cu to R3/R4 at the modem. The MCU side of the jumpers is short and autorouted (USB full-speed doesn't need impedance control).
   - +5V: a 0.5 mm B.Cu highway from J1 to the buck input.
   - Escape vias for modem pins 39-42.
 - **Autorouted:** everything else, with Freerouting. It works electrically but meanders; tidy anything you care about. Rev 0.2's last four connections (BOOT0, EXP_PB9, the DCD pull-up and SIM_RST) were finished with a small grid maze router (`layout_scripts/maze_route.py`), so they're a bit stair-steppy.
-- **Rules:** JLC-friendly. 0.15 mm default track/space, 0.5/0.3 mm vias, 0.6 mm VBAT, 0.3 mm power, 0.35 mm RF.
+- **Rules:** JLC-friendly. 0.15 mm default track/space, 0.5/0.3 mm vias, 0.6 mm VBAT, 0.3 mm power, 0.30 mm RF.
 
 ### USB pair impedance (90 ohm)
 
 KiCad doesn't compute impedance. You choose a width and gap from a calculator and enter them in the net class.
 
-- The `USB` net class is set to **0.30 mm width / 0.15 mm gap**. That's my estimate for about 90 ohm differential on JLC04161H-7628 (outer layer, 0.21 mm prepreg to the adjacent plane).
-- **Before ordering**, check it in JLC's impedance calculator (Differential, Coupled Microstrip, L4 with L3 reference), or in KiCad's PCB Calculator under Transmission Lines.
-- Order with JLC's impedance-control option on that same stackup.
+- The `USB` net class is set to **0.25 mm width / 0.20 mm gap**: 92 ohm differential on JLC04161H-7628 (outer layer, 0.21 mm prepreg to the adjacent plane), from a 2D field solve including solder mask (DESIGN.md H06).
+- JLC04161H-7628 is what JLC builds for a 4-layer 1.6 mm order with **no impedance requirement**, so no paid impedance-control option is needed. Results are then within normal fab tolerance, not guaranteed to ±10%.
 - To adjust, change the diff-pair values in Board Setup -> Net Classes -> USB, then re-route with Route -> Differential Pair (shortcut 6). KiCad pairs `USB_DP`/`USB_DN` automatically from the P/N suffix.
-- The RF feeds (0.35 mm, about 50 ohm) need the same check.
+- The RF feeds are 0.30 mm with a 0.2 mm gap to the GND pour: about 49 ohm on the same stackup.
 
 ### Before ordering
 
@@ -200,7 +201,7 @@ KiCad doesn't compute impedance. You choose a width and gap from a calculator an
 3. `export_dsn.py`: export for Freerouting.
 4. `postroute.py`, `stitch.py`, `fixup.py`, `drop_dangling.py`, `hole_keepouts.py` and `maze_route.py`: import, pours, stitching, cleanup and finishing leftover connections.
 5. `sch_rev02.py`: the schematic edits that turned rev 0.1 into rev 0.2 (already applied; kept for reference).
-6. `sch_rev03.py`: the rev 0.3 battery/fuel-gauge/VSYS schematic edits (already applied). `sch_rev04.py`: the LSE crystal and L1 land (already applied).
+6. `sch_rev03.py`: the rev 0.3 battery/fuel-gauge/VSYS schematic edits (already applied). `sch_rev04.py`: the LSE crystal and L1 land; `sch_rev05.py`: antennas; `sch_rev06.py`: audit parts (all already applied).
 7. `final_fixes.py`, `silk_marks.py`: last clean-ups (bridging stray vias, GND island vias, J9 polarity marks).
 8. `make_jlc.py`: writes `bom_jlcpcb.csv` + `cpl_jlcpcb.csv` from the netlist and KiCad's position file, and checks they list the same parts.
 

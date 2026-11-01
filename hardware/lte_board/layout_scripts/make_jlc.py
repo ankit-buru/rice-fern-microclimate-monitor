@@ -59,6 +59,7 @@ JLC_CORR = {
     "C279948": (0, 0, 0), "C97604": (180, 0, 0),           # L1 (Sunlord land, centred), Y1 crystal (EasyEDA pad 1 at -x)
     "C47507": (0, 0, 0), "C3039401": (0, 0, 0), "C535146": (0, 0, 0),   # TPS22945, WE05DGCF-B, ESD103: the EasyEDA land itself
     "C192855": (0, 0, 0),                                   # LQW15AN 47 nH on KiCad L_0402 (symmetric)
+    "C239784": (0, 0, 0),                                   # ESD5651N-2/TR VBAT TVS: the EasyEDA land itself
 }
 lcsc_of = {ref: p[2] for ref, p in parts.items()}
 fp_of = {ref: p[1] for ref, p in parts.items()}

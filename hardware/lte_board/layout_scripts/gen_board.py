@@ -29,10 +29,12 @@ PLACE = {
     # --- SIM
     "J8": (36.2, 36.9, 0),   # front face 2.35 mm from the bottom edge: locked card fully over the PCB, ejected card ~1.85 mm out; nothing may sit in front of it
     "R21": (33.8, 23.15, 270), "R22": (34.9, 23.15, 270), "R23": (36.0, 23.15, 270),   # in the modem->SIM gap, under pins 15-17
-    "C51": (27.6, 27.6, 90), "C52": (26.4, 27.6, 90), "C53": (25.2, 27.6, 90),
-    "U7": (26.4, 31.0, 0), "C50": (27.6, 34.2, 90), "R24": (26.2, 34.2, 90),
+    # rev 0.6 (audit H10d): SIM ESD/filter parts within ~1-3 mm of the J8 contacts. Caps stand one above each contact
+    # (CLK 42.37, DATA 43.64, RST 44.91, VDD 47.45 final x), GND pad up to its own via; U7 left of R21-R23
+    "C52": (30.5, 28.0, 90), "C51": (32.4, 28.0, 90), "C53": (34.3, 28.0, 90), "C50": (36.45, 28.0, 90),
+    "U7": (30.0, 25.0, 0), "R24": (26.2, 34.2, 90),
     # --- buck (bottom right)
-    "L1": (47.6, 26.6, 90), "U2": (47.1, 31.6, 270), "C1": (45.1, 34.6, 180), "C3": (46.0, 22.6, 0),
+    "L1": (47.6, 26.6, 90), "U2": (47.1, 31.6, 270), "C1": (45.1, 34.7, 180), "C3": (46.0, 22.6, 0),
     "R6": (49.9, 30.46, 0), "R8": (49.9, 32.74, 0), "R7": (49.9, 33.9, 180),   # EN pull-down / FB divider at their U2 pins
     # --- modem USB / misc on right strip
     "R4": (46.0, 13.8, 180), "R3": (46.0, 15.0, 180), "JP1": (50.3, 22.8, 0), "R25": (46.0, 19.4, 0),   # JP1 below the LTE SMA
@@ -73,6 +75,9 @@ PLACE = {
     "U10": (35.6, 8.9, 0), "R39": (37.6, 8.9, 90), "C60": (35.6, 11.2, 0),
     # LTE: R19 -> C61 -> node (J6 U.FL below, D6 TVS above, R40 DNP 0R east) -> J10 SMA on the right edge
     "C61": (59.0, 7.35, 0), "D6": (60.45, 6.2, 90), "R40": (62.6, 8.0, 270), "J10": (63.5, 17.6, 270),
+    # --- rev 0.6 audit parts (final coordinates): U5 VCCA cap, VBAT TVS between C31 and the LTE match (supply end of
+    # the VBAT bus, as in HD V1.05 Fig. 5), PWRKEY ESD between pin 39's escape via and the top edge
+    "C62": (32.1, 14.88, 0), "D7": (57.35, 4.05, 0), "D8": (45.1, 0.85, 180),
     # --- LEDs
     "D1": (27.0, 30.0, 0), "R9": (27.0, 31.5, 0),   # LEDs in the bottom middle: keeps the MCU bottom edge free
     "D2": (30.4, 30.0, 0), "R11": (30.4, 31.5, 0),
