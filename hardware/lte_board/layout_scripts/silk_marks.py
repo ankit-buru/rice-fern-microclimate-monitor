@@ -16,13 +16,13 @@ if not any(isinstance(d, pcbnew.PCB_TEXT) and d.GetText().startswith("BAT") for 
     print("silk marks added")
 else:
     print("silk marks already present")
-# button labels, in free silk next to each button (SW1 top edge, SW2 above the button, left of the SIM holder)
+# button labels, in free silk above each button (RESET and BOOT0 sit side by side at the bottom edge)
 OX, OY = 100.0, 100.0
 if not any(isinstance(d, pcbnew.PCB_TEXT) and d.GetText() == "RESET" for d in b.GetDrawings()):
-    for txt, x, y in (("RESET", 15.5, 2.8), ("BOOT0", 33.3, 38.3)):
+    for txt, ref in (("RESET", "SW1"), ("BOOT0", "SW2")):
+        q = b.FindFootprintByReference(ref).GetPosition()
         t = pcbnew.PCB_TEXT(b); t.SetText(txt); t.SetLayer(pcbnew.F_SilkS)
         t.SetTextSize(VECTOR2I(FromMM(1.0), FromMM(1.0))); t.SetTextThickness(FromMM(0.18))
-        t.SetPosition(VECTOR2I(FromMM(OX + x), FromMM(OY + y))); b.Add(t)
-    b.FindFootprintByReference("SW1").Reference().SetPosition(VECTOR2I(FromMM(OX + 20.6), FromMM(OY + 6.4)))   # was off the board edge
+        t.SetPosition(VECTOR2I(q.x - FromMM(1.0), q.y - FromMM(3.7))); b.Add(t)
     print("button labels added")
 pcbnew.SaveBoard(sys.argv[1], b)

@@ -39,45 +39,46 @@ PLACE = {
     # --- modem USB / misc on right strip
     "R4": (46.0, 13.8, 180), "R3": (46.0, 15.0, 180), "JP1": (50.3, 22.8, 0), "R25": (46.0, 19.4, 0),   # JP1 below the LTE SMA
     # --- USB-C + protection + LDO (top left)
-    "J1": (3.3, 10.5, 270), "U1": (11.0, 10.5, 180), "R1": (10.2, 6.6, 0), "R2": (10.6, 13.7, 0), "C2": (12.9, 13.7, 0),   # J1 clear of corner hole H1
+    "J1": (3.3, 28.0, 270), "U1": (11.0, 28.0, 180), "R1": (10.2, 24.1, 0), "R2": (11.25, 30.5, 0), "C2": (12.2, 25.4, 0),   # rev 0.7: USB-C lowest on the left edge
     "U3": (56.0, 38.8, 90), "C5": (56.0, 42.3, 0), "C4": (55.5, 44.4, 0),   # LDO on VSYS, bottom-right corner by the buck
     # --- rev 0.2: USB select jumpers (pad 1 = MCU, 3 = modem), modem power override, BOOT0, shifter pulls
-    "JP4": (16.5, 8.4, 0), "JP3": (16.5, 12.5, 0),
-    "R28": (14.75, 28.6, 270), "JP5": (17.5, 30.0, 0),
+    "JP4": (15.0, 21.0, 0, "B"), "JP3": (15.0, 23.7, 0, "B"),   # bare-copper USB select jumpers on the bottom, between U1 and the MCU
+    "R28": (16.4, 29.6, 270), "JP5": (20.5, 30.2, 0),
     "SW2": (34.3, 42.0, 90), "TP4": (33.1, 21.6, 0),
-    "R29": (20.4, 10.2, 270), "R30": (21.6, 10.2, 270), "R31": (20.4, 12.6, 270), "R32": (21.6, 12.6, 90),
+    "R29": (24.2, 9.05, 0), "R30": (20.15, 5.6, 270), "R31": (25.8, 11.55, 0), "R32": (28.5, 15.6, 270),
     # --- rev 0.3: battery input (bottom left) and USB/battery OR-ing (under the SIM holder)
     "J9": (11.5, 35.2, 0), "Q3": (19.0, 33.4, 0), "R33": (19.0, 36.3, 0),
-    "U9": (23.6, 33.6, 0), "Q5": (23.6, 37.2, 0), "R35": (27.6, 33.4, 90), "C43": (28.8, 33.4, 90), "R36": (30.0, 33.4, 90),
-    "U8": (28.4, 36.6, 0), "C44": (26.6, 36.6, 90), "R37": (30.4, 36.6, 90), "C45": (28.4, 39.0, 0),
+    "U9": (23.6, 33.6, 0), "Q5": (23.6, 37.2, 0), "R35": (27.6, 33.4, 90), "C43": (26.55, 33.125, 90), "R36": (31.2, 33.4, 90),
+    "U8": (29.4, 36.6, 0), "C44": (26.6, 36.6, 90), "R37": (31.4, 36.6, 90), "C45": (29.4, 39.0, 0),
     "D4": (39.6, 39.0, 90), "Q4": (38.7, 43.5, 270), "R34": (37.6, 39.0, 90),   # OR-ing between SW2 and the SIM holder
     # --- level shifter
-    "U5": (22.0, 12.6, 180), "C21": (18.4, 7.6, 0), "TP3": (17.6, 6.9, 0),
+    "U5": (25.9, 10.9, 180), "C21": (25, 15.4, 0), "TP3": (24.4, 16.2, 0),
     # --- MCU
-    "U4": (14.5, 22.0, 0),
-    "C10": (9.7, 16.2, 0), "C11": (18.9, 27.9, 0), "C12": (20.7, 18.6, 90), "C13": (17.1, 14.6, 0),
-    "C14": (7.9, 23.0, 90), "C15": (7.9, 25.0, 90), "C16": (11.7, 16.2, 0),   # C14/C15 at VDDA pin 9
-    "C17": (6.6, 26.6, 0), "R10": (14.5, 16.2, 0),    # C17 (NRST) in the strip between J3 and J2
-    "R12": (2.0, 26.6, 0), "R13": (4.2, 26.6, 0),     # I2C pull-ups, strip between J3 and J2
-    "Y1": (8.0, 19.3, 90),                          # 32.768 kHz LSE: pin 1 top -> PC14 (pin 3), pin 2 bottom -> PC15 (pin 4)
-    "C54": (5.6, 17.0, 180), "C55": (5.6, 18.0, 180),   # LSE load caps, OSC pad toward Y1
+    "U4": (18.4, 12.67, 180),
+    "C10": (13.4, 19.3, 0), "C11": (13.75, 8.0, 180), "C12": (12.2, 16.07, 270), "C13": (21.0, 24.2, 0),
+    "C14": (22.6, 19.9, 0), "C15": (23.4, 21.8, 0), "C16": (21.2, 18.47, 180),   # C14/C15 at VDDA pin 9
+    "C17": (7.5, 42.25, 270), "R10": (34.8, 37.2, 0),  # C17 (NRST) beside the RESET button (owner placement)
+    "R12": (9.5, 11.5, 90), "R13": (9.5, 9.0, 270),    # I2C pull-ups beside J3 (owner placement)
+    "Y1": (25.8, 16, 180),                          # 32.768 kHz LSE: pin 1 top -> PC14 (pin 3), pin 2 bottom -> PC15 (pin 4)
+    "C54": (24, 18.3, 90), "C55": (27.6, 18.3, 90),   # LSE load caps, OSC pad toward Y1
     # --- connectors left / bottom
-    "J3": (3.4, 22.0, 270), "J2": (4.6, 31.0, 0),
-    "J4": (11.0, 40.9, 90), "SW1": (10.5, 3.0, 0), "J5": (6.8, 44.6, 90),  # SW1: top edge (BIG offset added below); J5 clear of hole H3
+    "J3": (3.4, 9.5, 270), "J2": (4.6, 18.0, 0),      # left edge top -> bottom: Qwiic (I2C2 pins), SWD, USB-C
+    "J4": (11.0, 40.9, 90), "SW1": (4.5, 38.0, 180),  # RESET in the bottom-left corner, below USB-C (owner placement)
     # --- modem control
-    "Q1": (19.8, 22.0, 0), "R14": (19.6, 24.6, 0), "R15": (19.6, 19.6, 0), "TP2": (23.2, 21.0, 0),
-    "Q2": (22.6, 25.4, 0), "R16": (22.6, 28.0, 0), "R17": (20.0, 28.0, 0),
-    "R27": (19.4, 17.6, 90), "R26": (25.6, 18.6, 90), "JP2": (25.6, 21.6, 90), "TP1": (22.6, 18.8, 0),
+    "Q1": (18, 3.4, 0), "R14": (15, 2.3, 0), "R15": (15, 1.1, 0), "TP2": (17.4, 6.1, 0),
+    "Q2": (22.6, 25.4, 0), "R16": (22.6, 28.0, 180), "R17": (20.5, 28, 0),
+    "R27": (20.6, 6.3, 90), "R26": (25.6, 18.6, 90), "JP2": (25.6, 21.6, 90), "TP1": (20.6, 20.6, 0),
     # --- rev 0.5 antennas (final board coordinates, no block offset). GNSS chain along y = 5.0 from the module's
     # top-left corner to the J7 SMA: R20 0R (C59/C58 DNP shunts above) -> C56 DC block -> D5 TVS + L2/R38 bias feed below
     "C56": (35.1, 5.0, 180), "C58": (36.08, 3.5, 90), "C59": (38.03, 3.5, 90),
-    "D5": (33.55, 6.3, 270), "L2": (32.5, 6.3, 270), "R38": (32.5, 8.3, 270), "C57": (33.0, 10.3, 0),
-    "U10": (35.6, 8.9, 0), "R39": (37.6, 8.9, 90), "C60": (35.6, 11.2, 0),
+    "D5": (33.55, 6.3, 270), "L2": (32.5, 6.3, 270), "R38": (9.8, 3, 90), "C57": (11.4, 3, 90),
+    "U10": (14, 3, 0), "R39": (16.5, 3, 90), "C60": (16.5, 1, 0),
     # LTE: R19 -> C61 -> node (J6 U.FL below, D6 TVS above, R40 DNP 0R east) -> J10 SMA on the right edge
     "C61": (59.0, 7.35, 0), "D6": (60.45, 6.2, 90), "R40": (62.6, 8.0, 270), "J10": (63.5, 17.6, 270),
     # --- rev 0.6 audit parts (final coordinates): U5 VCCA cap, VBAT TVS between C31 and the LTE match (supply end of
     # the VBAT bus, as in HD V1.05 Fig. 5), PWRKEY ESD between pin 39's escape via and the top edge
-    "C62": (32.1, 14.88, 0), "D7": (57.35, 4.05, 0), "D8": (45.1, 0.85, 180),
+    "R41": (21.4, 26.4, 90), "R42": (22.4, 26.4, 90),   # rev 0.8: fuel-gauge bus (I2C1) pull-ups
+    "C62": (32.98, 15.4, 0), "D7": (57.35, 4.05, 0), "D8": (45.1, 0.85, 180),
     # --- LEDs
     "D1": (27.0, 30.0, 0), "R9": (27.0, 31.5, 0),   # LEDs in the bottom middle: keeps the MCU bottom edge free
     "D2": (30.4, 30.0, 0), "R11": (30.4, 31.5, 0),
@@ -87,10 +88,10 @@ PLACE = {
 # Widened from 51 to 63.5 mm: modem/RF/SIM/buck block moves right by 11 mm,
 # level shifter + modem control block by 5 mm, opening two routing channels.
 BIG = set("U6 J6 R19 C40 C41 R20 J7 C30 C31 C32 C33 C34 C35 C20 J8 R21 R22 R23 R24 C50 C51 C52 C53 U7 "
-          "L1 U2 C1 C3 R7 R8 R6 SW1 R3 R4 JP1 R25 TP3".split())
+          "L1 U2 C1 C3 R7 R8 R6 R3 R4 JP1 R25 TP3".split())
 MID = set("U5 C21 Q1 R14 R15 TP2 Q2 R16 R17 R27 R26 JP2 TP1".split())
-for r, (x, y, a) in list(PLACE.items()):
-    PLACE[r] = (x + (11.0 if r in BIG else 5.0 if r in MID else 0.0), y, a)
+for r, (x, y, a, *side) in list(PLACE.items()):
+    PLACE[r] = (x + (11.0 if r in BIG else 5.0 if r in MID else 0.0), y, a, *side)
 
 # ---------------------------------------------------------------- netlist
 txt = open(NETLIST).read()
@@ -152,8 +153,11 @@ for c in comps:
         if n and (c["ref"], n) in pinnet:
             pad.SetNet(netinfo[pinnet[(c["ref"], n)]])
     if c["ref"] in PLACE:
-        x, y, r = PLACE[c["ref"]]
+        x, y, r = PLACE[c["ref"]][:3]
         fp.SetPosition(P(x, y))
+        if PLACE[c["ref"]][3:] == ("B",):                  # bottom side (bare-copper solder jumpers only)
+            try: fp.Flip(P(x, y), pcbnew.FLIP_DIRECTION_LEFT_RIGHT)
+            except (AttributeError, TypeError): fp.Flip(P(x, y), True)
         fp.SetOrientationDegrees(r)
     else:
         missing.append(c["ref"])

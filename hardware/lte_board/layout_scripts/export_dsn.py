@@ -19,3 +19,19 @@ if "via_at_smd" not in d:
     d = d.replace("  (structure\n", "  (structure\n    (control (via_at_smd off))\n", 1)
     assert "via_at_smd" in d, "DSN has no (structure section"
     open(sys.argv[2], "w").write(d)
+
+# layer budget: In1 is a solid GND plane (no tracks at all); In2 takes power nets only; signals use F.Cu and B.Cu
+import re
+POWER_CLASSES = {"Power", "Batt", "VBAT"}
+d = open(sys.argv[2]).read()
+out, i, n = [], 0, 0
+while True:                                   # each "(class NAME nets..." block: add the rule to its "(circuit"
+    k = d.find("\n    (class ", i)
+    if k < 0: break
+    name = d[k + 12:].split(None, 1)[0]
+    c = d.index("(circuit\n", k) + len("(circuit\n")
+    layers = "F.Cu In2.Cu B.Cu" if name in POWER_CLASSES else "F.Cu B.Cu"
+    out.append(d[i:c] + f"        (use_layer {layers})\n"); i = c; n += 1
+d = "".join(out) + d[i:]
+assert n >= 5, f"only {n} net classes got a layer rule"
+open(sys.argv[2], "w").write(d)

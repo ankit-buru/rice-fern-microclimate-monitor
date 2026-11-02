@@ -1,0 +1,34 @@
+(version 1)
+# Layer budget (DESIGN.md §4.10): In1 is solid GND, In2 carries power only, signals use F.Cu/B.Cu.
+# The interactive router takes the "opt" width, so a power track becomes 0.5 mm when it changes to In2
+# and 0.3 mm on the outer layers (it may neck to 0.15 mm into fine-pitch pins). Battery-current tracks (class Batt,
+# BUCK_SW included) are 0.4 mm outside and 0.5 mm on In2.
+
+(rule "Power on In2: 0.5 mm"
+	(layer In2.Cu)
+	(condition "A.NetClass == 'Power'")
+	(constraint track_width (min 0.3mm) (opt 0.5mm)))
+
+(rule "Power on outer layers: 0.3 mm"
+	(layer outer)
+	(condition "A.NetClass == 'Power'")
+	(constraint track_width (min 0.15mm) (opt 0.3mm)))
+
+(rule "Battery current on In2: 0.5 mm"
+	(layer In2.Cu)
+	(condition "A.NetClass == 'Batt'")
+	(constraint track_width (min 0.4mm) (opt 0.5mm)))
+
+(rule "Battery current on outer layers: 0.4 mm"
+	(layer outer)
+	(condition "A.NetClass == 'Batt'")
+	(constraint track_width (min 0.3mm) (opt 0.4mm)))
+
+(rule "In1 is solid GND"
+	(layer In1.Cu)
+	(constraint disallow track))
+
+(rule "In2 carries power only"
+	(layer In2.Cu)
+	(condition "A.NetClass != 'Power' && A.NetClass != 'VBAT' && A.NetClass != 'Batt'")
+	(constraint disallow track))

@@ -184,8 +184,10 @@
         0.0,
         0.15,
         0.2,
+        0.3,
         0.35,
         0.4,
+        0.5,
         0.6,
         0.8,
         1.2
@@ -624,8 +626,20 @@
         "pattern": "+3V3"
       },
       {
-        "netclass": "Power",
+        "netclass": "Batt",
         "pattern": "/BUCK_SW"
+      },
+      {
+        "netclass": "Power",
+        "pattern": "/VDD_EXT"
+      },
+      {
+        "netclass": "Power",
+        "pattern": "/GNSS_VANT"
+      },
+      {
+        "netclass": "Power",
+        "pattern": "/GNSS_BIAS"
       },
       {
         "netclass": "Batt",
@@ -705,10 +719,6 @@
       },
       {
         "netclass": "Long",
-        "pattern": "/VDD_EXT"
-      },
-      {
-        "netclass": "Long",
         "pattern": "/MDM_USB_VBUS"
       },
       {
@@ -722,38 +732,6 @@
       {
         "netclass": "Long",
         "pattern": "/DBG_RX"
-      },
-      {
-        "netclass": "Long",
-        "pattern": "/EXP_PA0"
-      },
-      {
-        "netclass": "Long",
-        "pattern": "/EXP_PA1"
-      },
-      {
-        "netclass": "Long",
-        "pattern": "/EXP_PA4"
-      },
-      {
-        "netclass": "Long",
-        "pattern": "/EXP_PA5"
-      },
-      {
-        "netclass": "Long",
-        "pattern": "/EXP_PA6"
-      },
-      {
-        "netclass": "Long",
-        "pattern": "/EXP_PA7"
-      },
-      {
-        "netclass": "Long",
-        "pattern": "/EXP_PB10"
-      },
-      {
-        "netclass": "Long",
-        "pattern": "/EXP_PB11"
       },
       {
         "netclass": "Long",

@@ -1,4 +1,4 @@
-# LTE sensor board: design document (rev 0.3)
+# LTE sensor board: design document (rev 0.9)
 
 This is the design record for `hardware/lte_board`. It covers what the board must do, how it's built,
 why each major decision went the way it did, how the layout is generated, what went wrong along the way,
@@ -25,9 +25,9 @@ temperature, humidity and UV sensors and sends the readings over cellular to AWS
 
 | Item | State |
 |---|---|
-| Schematic (`lte_board.kicad_sch`, rev 0.3) | ERC: 0 errors, 0 warnings |
-| PCB (`lte_board.kicad_pcb`) | DRC: 0 violations, 0 unconnected, 0 schematic-parity issues |
-| `bom_jlcpcb.csv` / `cpl_jlcpcb.csv` | 43 lines / 92 parts, every part has an LCSC #, BOM and CPL list identical designators |
+| Schematic (`lte_board.kicad_sch`, rev 0.9) | ERC: 0 errors, 0 warnings |
+| PCB (`lte_board.kicad_pcb`) | DRC: 0 violations, 0 unconnected, 0 schematic-parity issues (all severities, incl. the `lte_board.kicad_dru` layer rules). Hand-edited since rev 0.9: don't regenerate it with `pipeline.sh` |
+| `bom_jlcpcb.csv` / `cpl_jlcpcb.csv` | 52 lines / 112 parts, every part has an LCSC #, BOM and CPL list identical designators |
 | Fabricated / tested | **No.** Nothing has been built yet. |
 | Firmware | **None yet.** See §8 for what it has to do. |
 
@@ -37,16 +37,16 @@ temperature, humidity and UV sensors and sends the readings over cellular to AWS
                        USB-C (J1) --USBLC6 ESD--+--> JP3/JP4 3-pad jumpers --(1-2, default)--> STM32 USB (PA11/PA12)
                                                 |                           --(2-3)----------> R3/R4 --> SIM7080G USB
                                      +5V -------+--> D4 Schottky --+
-J9 JST-PH --Q3 reverse-polarity P-FET--> VBAT --> Q4 P-FET (off w/ USB) -+--> VSYS --+--> U2 SY8089 buck (EN = PB1 via R28) --> +3V8 --> SIM7080G VBAT
+J9 JST-PH --Q3 reverse-polarity P-FET--> VBAT --> Q4 P-FET (off w/ USB) -+--> VSYS --+--> U2 SY8089 buck (EN = PC13 via R28) --> +3V8 --> SIM7080G VBAT
      |  (U9 DW01A + Q5 FS8205A in the negative lead)                                 +--> U3 TPS7A0233 LDO --> +3V3 --> MCU, TXS0108 B side, Qwiic, LEDs
-     +--> U8 MAX17048 fuel gauge on VBAT (I2C 0x36, ALRT -> PA8)
+     +--> U8 MAX17048 fuel gauge on VBAT (I2C1 0x36, ALRT -> PB9)
 
 STM32L072CBT6 (U4) --USART2 + RTS/CTS + DTR/DCD/RI/STATUS--> TXS0108E (U5, 3.3V<->1.8V, OE = VDD_EXT) --> SIM7080G (U6)
-                   --PB0--> Q1 --> PWRKEY      --PB1--> buck EN      <--PB12-- STATUS      --I2C1 (PB6/PB7)--> Qwiic J3 + U8
+                   --PA7--> Q1 --> PWRKEY      --PC13-> buck EN      <--PA4-- STATUS      --I2C2 (PB13/PB11)--> Qwiic J3; I2C1 (PB8/PB7) --> U8
 SIM7080G --> nano-SIM J8 (22R series in the gap under pins 15-17, ESD U7)
          --> LTE: pi-match R19/C40/C41 -> C61 100 pF -> D6 TVS -> U.FL J6 (fitted) | R40 DNP 0R -> SMA J10 (option)
          --> GNSS: R20 + C58/C59 DNP -> C56 100 pF DC block -> D5 TVS + L2/R38 bias feed -> SMA J7
-                   bias: U10 TPS22945 load switch on +3V3, ON = PA15, OC flag -> PB3
+                   bias: U10 TPS22945 load switch on +3V3, ON = PB0, OC flag -> PB1
 ```
 
 The full pin map and block descriptions are in `README.md`. The schematic is one A2 sheet; the rev 0.2 and
@@ -66,7 +66,7 @@ checking its reason first. Several were explicit choices by the project owner.
   - Four **M2 corner holes** (2.2 mm NPTH, 2.5 mm from each edge, 4.9 mm copper keep-outs).
   - **63.5 x 46 mm** to fit the battery section.
 - **Single-sided assembly** was the owner's preference. Everything is SMD on top except J9 (through-hole by
-  choice, for strength) and the DNP 2.54 mm headers J4/J5.
+  choice, for strength) and the DNP 2.54 mm 2x5 header J4 (debug UART, BOOT0 and the SPI1 expansion pins; J5 removed in rev 0.7).
 
 ### 4.2 Two chips (STM32 + SIM7080G) instead of a cellular SoC
 - The alternative was the **Nordic nRF9151**: LTE-M/NB-IoT + GNSS with an application core, about $17.07
@@ -84,7 +84,7 @@ checking its reason first. Several were explicit choices by the project owner.
 - **BOOT0 button SW2:** hold it and tap RESET (SW1) to enter DFU. R10 pulls BOOT0 low.
 - **ROM bootloader, checked against ST AN2606 Rev 70 §66.1 (2026-10-31):**
   - The L072 carries bootloader **V4.x**: USART1 (PA9/PA10), USART2 (PA2/PA3) and USB DFU (PA11/PA12) only.
-    There is no SPI/I2C bootloader on this part, so the modem-side lines (e.g. DTR on PB13) can't confuse it.
+    There is no SPI/I2C bootloader on this part, so the modem-side lines (e.g. DTR on PH1) can't confuse it.
   - It enables internal pull-ups on PA10 and PA3, so the unfitted debug header doesn't need external pulls.
   - Entry is "Pattern 2": BOOT0 pin = 1 with the factory-default nBOOT1 = 1. It runs from HSI, so DFU needs no crystal.
   - Known limitation (V4.1): DFU can fail on some PCs' high-speed USB controllers. The workaround is a USB hub
@@ -111,12 +111,12 @@ checking its reason first. Several were explicit choices by the project owner.
   - JP1 feeds 5 V to the modem's USB_VBUS. Keep it open normally: the modem can't sleep with VBUS present.
   - JP5 forces the modem rail on. SIMCom: no voltage on any pin while VBAT is off.
   - TP4 (GND) sits next to TP2 (PWRKEY) for a manual power-on. Never tie PWRKEY low: the modem resets after 12.6 s.
-  - R28 (1k) sits between PB1 and the buck EN, so JP5 can't short a driven pin.
+  - R28 (1k) sits between PC13 and the buck EN, so JP5 can't short a driven pin.
 
 ### 4.5 Modem power strategy (firmware contract)
 - **Power the modem fully off between uploads.** Each upload:
-  1. buck on (PB1);
-  2. PWRKEY low for about 1.2 s (PB0 high);
+  1. buck on (PC13);
+  2. PWRKEY low for about 1.2 s (PA7 high);
   3. wait for STATUS (at least 1.8 s);
   4. attach, then TLS + MQTT publish;
   5. `AT+CPOWD=1`;
@@ -156,7 +156,7 @@ checking its reason first. Several were explicit choices by the project owner.
   - VSYS feeds the buck (SY8089, which makes 3.93 V and must run at 100% duty when the cell is below about
     3.9 V; **unconfirmed**, §9) and the LDO.
   - USB 5 V can't go straight to the modem: VBAT max is 4.8 V.
-- **U8 MAX17048** fuel gauge (C2682616): VDD/CELL on VBAT, I2C 0x36 on the Qwiic bus, ALRT -> PA8 (R37 pull-up).
+- **U8 MAX17048** fuel gauge (C2682616): VDD/CELL on VBAT, I2C 0x36 on its own I2C1 bus (PB7/PB8, R41/R42 4.7k), ALRT -> PB9 (R37 pull-up).
   Firmware should stop uploading at about 3.3 V; the DW01A is only the hardware backstop.
 - **Always-on loads fixed in rev 0.3:**
   - D1 (red LED) now runs from USB +5V. It was 1k from +3V3: about 6.5 mW, more than all the uploads combined.
@@ -182,7 +182,7 @@ checking its reason first. Several were explicit choices by the project owner.
   - **Choke:** Murata LQW15AN47NJ00D, SRF ≥ 2.9 GHz (about 465 Ω at 1575 MHz). The multilayer LQG15HS47N has an
     SRF of 1 GHz, which is useless here.
   - **Switched feed:** U10 TPS22945 from +3V3: fixed 100-200 mA current limit with 10 ms blanking and auto-restart,
-    < 1 µA off. ON = **PA15** (R39 100k pull-down: off through reset and DFU), open-drain OC flag -> **PB3**
+    < 1 µA off. ON = **PB0** (R39 100k pull-down: off through reset and DFU), open-drain OC flag -> **PB1**
     (internal pull-up). A crushed antenna cable trips the limit instead of pulling down +3V3. SIMCom: "the power
     supply of the active antenna should be controlled and closed".
   - **LTE and GNSS can't run at the same time** (V1.05: shared Qualcomm RX hardware), and GNSS is off by default.
@@ -210,7 +210,39 @@ checking its reason first. Several were explicit choices by the project owner.
     `stitch.py` and the maze router all respect them.
   - Card detect: the CD switch is closed to GND with no card and open with a card inserted.
 - **USB to the modem:** a coupled pair on B.Cu, **0.25 mm / 0.20 mm gap**: 92 Ω differential on JLC04161H-7628
-  (field solve, H06; the earlier 0.30/0.15 gave 80 Ω). In2 has a track keep-out under it. The MCU side of the jumpers is plain autorouted (USB FS).
+  (field solve, H06; the earlier 0.30/0.15 gave 80 Ω). The owner removed the In2 track keep-out under it on 2026-11-02 (only the stub at R3/R4 remains): at USB FS edge rates the split reference is acceptable. The MCU side of the jumpers is plain autorouted (USB FS).
+
+### 4.10 Rev 0.7 floorplan: the modem interface in one row (2026-11-02, branch hardware/simplify-routing)
+- **Row:** U4 (rotated 180 degrees), U5 and the modem's left edge sit side by side (U4 at y 12.67 = U5 + 1.77 mm, so
+  PA2 is level with U5's TXD channel). USART2 is unchanged; after the rotation PA3 is the top-right corner pin and
+  PA2/PA1/PA0 head the right side, in the modem's TXD, RXD, RTS, CTS order.
+- **GPIO choice follows the pin order:** STATUS -> PA4 (next to PA3), DTR -> PH1, RI -> PH0 (EXTI0). PH0/PH1 are plain
+  I/O on the LQFP48 (DS10689 Table 16). DCD -> PA5 needs one B.Cu hop: the crystal pins sit below PH0, so only two
+  in-order slots exist below PA0. DCD was kept because the owner asked for it (§4.6).
+- **U5 channel order** (A8 at the top, rot 180): STATUS, TXD, RXD, RTS, CTS, DCD, DTR, RI, the modem's pin 42 then
+  pins 1-7. U5's VCCA (pin 2) and VCCB (pin 19) sit between modem lines, so each is tied under the package body to its
+  cap below U5 (C62, C21).
+- **Peripheral pins** follow where their parts are after the rotation: Qwiic on I2C2 (PB13 SCL AF5 on the left side, PB11 SDA
+  AF6 on the top side next to it; the owner moved SDA off PB14 on 2026-11-02, both pins are I2C2 in DS10689 Table 18,
+  PB11 is FT rather than FTf, so no Fast-mode Plus); the fuel gauge on its own I2C1 bus (PB7 SDA AF1, PB8 SCL AF4, in U8's SDA-SCL-ALRT pin order with ALRT on PB9),
+  with new 4.7k pull-ups R41/R42, so a damaged sensor cable can no longer hang battery monitoring; LED_USER PB15 and
+  MDM_PWR_EN PC13 (owner, 2026-11-02, freeing PA15/PB3/PB4/PB5 for J4), SIM_DET PB6; a second Qwiic J11 (left edge
+  below J3, fitted) on its own bus I2C3 = PA8 SCL / PB4 SDA (AF7, pull-ups R43/R44; PB4 stays on J4 pin 6 too, owner's choice), PWRKEY_CTRL PA7, GNSS EN/FLT PB0/PB1. EXTI lines: 0 (RI), 6 (SIM_DET), 9 (ALRT) are
+  distinct.
+- **Left edge, top to bottom:** Qwiic J3 (level with the I2C2 pins), SWD J2 (level with SWDIO), USB-C J1 with U1. The
+  USB select jumpers JP3/JP4 sit on the bottom side between U1 and the MCU: U1 feeds their middle pads on F.Cu through
+  a via each, the MCU side runs B.Cu north to vias beside PA11/PA12, and the modem pair leaves eastward below the MCU
+  and rises at 45 degrees under the modem to R4/R3. B.Cu under the MCU stays free of the pair.
+- **Moved parts:** J5 removed; JP3/JP4 to the bottom side (bare copper, no assembly); RESET SW1 to the
+  bottom-left corner below USB-C, with C17 (NRST cap) beside it (owner placement); GNSS antenna switch U10 (+C57/C60/R39/R38) to the top-left corner; PWRKEY driver Q1
+  above U5.
+- **Layer budget:** In1 is solid GND (no tracks), In2 takes power nets only (the +5V highway and +3V3 moved there), signals
+  use F.Cu/B.Cu. `lte_board.kicad_dru` enforces it: no tracks on In1, only Power/VBAT/Batt tracks on In2, and Power
+  tracks 0.5 mm (min 0.3) on In2 and 0.3 mm (min 0.15, to neck into fine-pitch pins) on the outer layers; the
+  interactive router picks those widths up as its default. +3V3, VDD_EXT and GNSS_BIAS were re-routed that way with
+  `rip_net.py` + `maze_route.py --wide` (short 0.3 mm F.Cu stubs, then a via straight down to In2). Besides the modem USB pair, B.Cu carries the hand-routed hops (DCD, NRST, STATUS, PWRKEY to Q1,
+  NETLIGHT under the GNSS line; its run south to R16/Q2 is F.Cu over the pair), the MCU side of the USB jumpers
+  (hand-routed to vias beside PA11/PA12) and whatever the autorouter puts there (fuel-gauge and Qwiic I2C, SIM_DET, SWD, debug UART).
 
 ## 5. Power budget (summary)
 
@@ -239,8 +271,8 @@ The modem is off between uploads; the figures are at the 5 V/VSYS level, and the
   requirement (owner's choice 2026-11-01: no paid impedance control). 0.2104 mm 7628 prepreg (Er 4.4) between each
   outer layer and its plane, 1.065 mm core, 1 oz outer / 0.5 oz inner copper (jlcpcb.com/impedance).
   - **F.Cu:** components, signals, GND pour.
-  - **In1:** solid GND, with a track keep-out for x >= 38.5 mm (the modem/RF/SIM/buck half).
-  - **In2:** signals + GND pour, a +3V8 strip from the buck to the modem VBAT pins, and a track keep-out under the USB pair.
+  - **In1:** solid GND, no tracks (rev 0.7: the DSN gives every net class `use_layer`, and the maze router follows the same rule).
+  - **In2:** power nets only (+3V3, +5V, VDD_EXT, VBAT/battery, GNSS antenna supply) + GND pour and a +3V8 strip from the buck to the modem VBAT pins.
   - **B.Cu:** signals, the +5V highway, the USB pair, GND pour.
 - **Rules (`lte_board.kicad_pro`, written by `mkpro.py`):**
   - 0.15 mm track and clearance;
@@ -251,8 +283,8 @@ The modem is off between uploads; the figures are at the 5 V/VSYS level, and the
     | Class | Width | Nets |
     |---|---|---|
     | VBAT | 0.6 mm | +3V8 |
-    | Power | 0.3 mm | +5V, +3V3, BUCK_SW |
-    | Batt | 0.4 mm | BATT_IN, BATT_N, VBAT, VSYS |
+    | Power | 0.3 mm (0.5 on In2) | +5V, +3V3, VDD_EXT, GNSS |
+    | Batt | 0.4 mm (0.5 on In2) | BATT_IN, BATT_N, VBAT, VSYS, BUCK_SW (battery current) |
     | RF | 0.30 mm | RF feeds |
     | USB | 0.25 mm / 0.20 mm gap | USB pair |
     | Long | default | the long-run nets (`mkpro.py` LONG list; used by an abandoned two-stage experiment) |
@@ -262,12 +294,12 @@ The modem is off between uploads; the figures are at the 5 V/VSYS level, and the
   - the 0.6 mm VBAT bus to C30-C34;
   - the +3V8 vias;
   - the USB select chain and the coupled pair;
-  - the +5V highway: J1 -> B.Cu down x = 8.9 mm, along y = 30.6 mm -> D4;
+  - the +5V highway: J1 VBUS -> via at x = 8.9 mm -> In2 along y = 30.6 mm -> D4;
   - the modem pin 39-42 escape vias;
   - the U1 GND via;
   - the zones and keep-outs.
 - **Placement regions** (`gen_board.py` PLACE table, mm from the board's top-left corner):
-  - **USB-C + ESD + USB jumpers:** top-left.
+  - **Qwiic, SWD, USB-C + ESD:** left edge, top to bottom; USB jumpers on the bottom side next to U1.
   - **MCU:** left-centre.
   - **TXS0108 + modem-control transistors:** centre (the "MID" group, offset +5 mm).
   - **Modem + RF + SIM + buck:** right (the "BIG" group, offset +11 mm).
@@ -275,7 +307,7 @@ The modem is off between uploads; the figures are at the 5 V/VSYS level, and the
   - **OR-ing (D4/Q4/R34):** between SW2 and the SIM holder. **LDO (U3/C4/C5):** bottom-right corner, by the buck.
   - **SIM holder J8:** front face 2.35 mm from the bottom edge (§4.9). Nothing may be placed in front of it (§7.4, lesson 12).
   - **LEDs:** bottom-middle.
-  - **J4/J5/SW2:** bottom edge.
+  - **J4 (2x5) / J9 / SW2:** bottom edge, left to right. **SW1 (RESET):** bottom-left corner, below USB-C.
 
 ## 7. Layout toolchain
 
@@ -311,14 +343,19 @@ The modem is off between uploads; the figures are at the 5 V/VSYS level, and the
 | `stitch.py board` | KiCad python | GND stitching vias on a 1.3 mm grid wherever they clear everything (not under screw heads) |
 | `fixup.py board` | KiCad python | U1 GND via, widens <0.1 mm necks, island removal, refill |
 | `drop_dangling.py board drc.rpt` | KiCad python | Deletes dangling vias/stubs listed in a DRC report, unless that adds an unconnected item |
-| `maze_route.py board NET...` | KiCad python | 0.1 mm grid A*/Dijkstra router over 4 layers; joins a net's copper islands one by one. Removes free stitching vias first |
+| `maze_route.py board [--wide] NET...` | KiCad python | 0.1 mm grid A*/Dijkstra router over 4 layers; joins a net's copper islands one by one. Removes free stitching vias first. `--wide` (power nets): 0.3 mm F.Cu / 0.5 mm In2, outer layers cost 3x, no B.Cu, stays out of other nets' In2 pours |
+| `power_widths.py board` | KiCad python | Sets every Power-class track to the layer rule (0.5 mm In2, 0.3 mm outer), stepping a track down only where DRC flags it; Batt/VBAT tracks untouched |
+| `tools/owl_logo.py` | KiCad python | Board logo `lte_board_art.pretty/OwlTree_6mm` (LOGO1, below the modem; eyes = exposed copper on GND) from `art/OwlTree.svg` via `tools/svg2footprint.py` (copied from LaserHAT, with `fp2svg.py`). The art is the LaserHAT owl (`art/OwlLogo_LaserHAT.svg`) without beams and neuron, plus a tree; 0.39 scale keeps its feather gaps printable |
+| `silk_cleanup.py board` | KiCad python | Fab silkscreen: keeps J/JP/TP/D1-D3 labels, hides the other 110 references, adds MCU/MDM marks beside JP3/JP4 on the bottom |
+| `swap_footprint.py board net.net REF LIB:FP` | KiCad python | Swaps one footprint in place on the hand-edited board, syncs every pad net from the netlist and deletes the copper the new pads collide with (rev 0.9: J4 -> 2x5) |
+| `rip_net.py board NET...` | KiCad python | Deletes a net's unlocked tracks and vias (locked hand routes stay), before re-routing it |
 | `final_fixes.py board drc.rpt` | KiCad python | Replaces "dangling" vias that only bridge two same-layer track ends; adds a via to every orphan F.Cu GND island (all-layer clearance check) |
 | `silk_marks.py board` | KiCad python | "+ J9 -" / "BAT 3.0-4.2V" silkscreen |
 | `mkpro.py lte_board.kicad_pro` | python3 | Writes design rules and net classes into the project file |
 | `make_jlc.py netlist pos.csv outdir` | python3 | `bom_jlcpcb.csv` + `cpl_jlcpcb.csv`; fails on a missing LCSC #; reports BOM/CPL mismatches |
 | `hand_fix_sim_rst.py board` | KiCad Python | One-off fix for the rev 0.4 route only: finished /SIM_RST at U7 pad 4. **Not used since rev 0.5** (that route connects it); kept for reference |
 | `check_via_in_pad.py board` | KiCad Python | Lists vias touching any SMD pad (run by `pipeline.sh`; expect 0) |
-| `sch_rev02.py` ... `sch_rev06.py` | python3 | The schematic edits for each revision (already applied; reference for how to edit the schematic by script). rev05 = antenna ESD, GNSS bias tee, SMA jacks; rev06 = audit parts (C62, D7, D8, C1 0805) |
+| `sch_rev02.py` ... `sch_rev06.py` | python3 | The schematic edits for each revision (already applied; reference for how to edit the schematic by script). rev05 = antenna ESD, GNSS bias tee, SMA jacks; rev06 = audit parts (C62, D7, D8, C1 0805); rev07 = J5 removed, modem GPIOs re-pinned, U5 channels in modem order; rev08 = I2C2 for Qwiic, own I2C1 bus + R41/R42 for U8, LED/SIM_DET/PWR_EN re-pinned; rev09 = J4 1x5 -> 2x5 with PA15/PB3/PB4/PB5 + GND; rev10 = second Qwiic J11 on I2C3 (PA8/PB4), R43/R44, LED_USER -> PB15 |
 
 Typical run:
 
@@ -439,15 +476,15 @@ $K pcb render --side top --quality high -o pcb_render_top.png lte_board.kicad_pc
 - **Sleep:** STM32 Stop mode + RTC (about 1 µA), with the independent watchdog armed.
 - **Battery:**
   - MAX17048 on I2C 0x36 (check for sensor address clashes);
-  - ALRT on PA8 (EXTI) for low-SOC/voltage alerts;
+  - ALRT on PB9 (EXTI9) for low-SOC/voltage alerts;
   - stop uploading around 3.3 V/cell.
 - **Data:** store readings when coverage fails. The L072CB has 6 KB of EEPROM, 128 KB of flash and 20 KB of RAM; no external
   flash (declined by the owner).
-- **GNSS (optional):** LTE and GNSS can't run concurrently. For a fix: drive **PA15 high** (antenna power),
+- **GNSS (optional):** LTE and GNSS can't run concurrently. For a fix: drive **PB0 high** (antenna power),
   `AT+CGNSPWR=1` / `AT+CGNSS` per the SIM7080 AT manual (V1.03 and V1.05 name it differently), get the fix, power
-  GNSS off, drive PA15 low, then connect LTE. **PB3 low = antenna over-current** (enable the internal pull-up):
-  report a damaged antenna cable and switch the feed off. Keep PA15 low otherwise (the antenna draws 5-25 mA).
-- **SIM:** card detect on PB5, pulled up by R24 = 1M. The holder's switch shorts CD to GND with **no** card and opens with a card, so **PB5 high = card present** (SMN-303 drawing). SIM must be 1.8 V-capable.
+  GNSS off, drive PB0 low, then connect LTE. **PB1 low = antenna over-current** (enable the internal pull-up):
+  report a damaged antenna cable and switch the feed off. Keep PB0 low otherwise (the antenna draws 5-25 mA).
+- **SIM:** card detect on PB6, pulled up by R24 = 1M. The holder's switch shorts CD to GND with **no** card and opens with a card, so **PB6 high = card present** (SMN-303 drawing). SIM must be 1.8 V-capable.
 
 ## 9. Open items
 
@@ -465,9 +502,9 @@ not close the corresponding prototype test. Nothing is marked independently veri
 | ID | Status | Task / evidence needed | Source |
 |---|---|---|---|
 | H01 | Reported; evidence pending | **SY8089AAAC (C78988) 100% duty cycle:** owner reports support. Record the exact datasheet revision/page and low-input-voltage behavior, then update the uncertainty in §4.7 and the README block overview. If the exact part does not meet the requirement, review an alternative before changing the design. Low-battery operation still needs T01. | Original §9 item 1; §4.7; README block overview |
-| H02 | Open | **DW01A (C351410) / FS8205A (C908265):** check exact-part values, protection thresholds, SOT-23-6 pinout and actual symbol-to-pad connections against datasheets. Do not substitute the TSSOP-8 pinout. | Original §9 item 2; §4.7 |
+| H02 | Checked against datasheets (2026-11-01) | **DW01A (C351410, PUOLOP) / FS8205A (C908265):** pinouts from the manufacturer datasheets match the EasyEDA symbols, the KiCad SOT-23-6 pad order and the netlist (U9: 1 OD, 2 VM, 3 OC, 4 TD open, 5 VCC, 6 GND = BATT_N; Q5: 1 S1 = BATT_N, 2/5 drains, 3 S2 = GND, 4 G2 = OC, 6 G1 = OD). R35 100 Ω / C43 100 nF / R36 1 kΩ are the datasheet's typical values. Thresholds: overcharge 4.30 V, overdischarge 2.50 V (release 2.90 V), overcurrent 130-170 mV across both FETs; at 2 × 18-32 mΩ that trips at about 2.0-4.7 A, against a 0.5 A modem peak (SIM7080G HD V1.05). Low-cell start-up stays a bench test (H10b). | Original §9 item 2; §4.7 |
 | H03 | Land verified from documentation (2026-11-01); bypass value open | **MAX17048 (C2682616):** Evidence: Maxim outline 21-0168 rev M (T822-3: EP 0.80 × 1.20, b 0.25, L 0.20-0.40) and land pattern 90-0065 rev E. The LCSC land had short pads (0.28 × 0.425, little toe) and a 1.2 mm EP; the footprint now uses Maxim's land: 0.30 × 0.70 pads on 1.98 mm row centres, EP 0.80 × 1.38. Still open: VDD bypass (datasheet 0.1 µF, C44 = 1 µF). | Original §9 item 2 |
-| H04 | Open | **U7 ESDA6V1W5:** confirm pin 2 ground and pins 1/3/4/5 I/O against ST's datasheet; the earlier check used a pin-compatible second source. Compare with the actual footprint. | README: Check these before ordering, item 1 |
+| H04 | Checked against ST datasheet (2026-11-01) | **U7 ESDA6V1W5 (C48677, genuine ST):** ST's functional diagram has pin 2 as the common anode and pins 1/3/4/5 as I/O, matching U7 (2 GND; 1 SIM_DATA, 3 SIM_CLK, 4 SIM_RST, 5 SIM_VDD) and the SOT-353 pad order. VRM 3 V, VBR 6.1 V min, 1 µA leakage. Note: 90 pF typ per line, plus the 33 pF filters; SIMCom HD V1.05 §3.5 both names ESDA6V1W5 and asks for ≤15 pF TVS. Kept (SIMCom's named part, SIM clock ≤5 MHz behind 22 Ω); a low-capacitance array is an option if SIM detection is flaky. | README: Check these before ordering, item 1 |
 | H05 | Verified from documentation (2026-10-30); hardware test pending (T02) | **J8 SMN-303:** Evidence: XunPu SMN-303 drawing (Rev A, linked in DATASHEETS.md). Contact order C3/C7/C2/C6/C1/C5/CD, 2 × 6.50 mm and 12.00 mm tab spacing and the two Ø0.75 mm pegs match the footprint; CD is normally shorted to GND and opens with a card (PB5 high = card present); card inserts from the bottom edge; the drawing's six no-copper areas are now keep-outs. Minor: the drawing's contact row sits about 0.14 mm further from the tabs than the LCSC footprint's pads, which is well inside the pads' length. Original task: verify the already-renumbered footprint against the holder drawing: 1/2/3/5/6/7 = SIM C1/C2/C3/C5/C6/C7, 8 = card detect, 9-11 = shell ground; confirm locating pegs and inserted-card detect polarity. Hardware verification is T02. | README: ordering checks and footprint fixes |
 | H06 | Calculated (2026-11-01); hardware not measured | **Result:** stackup JLC04161H-7628 (no-requirement default). Quasi-static 2D finite-difference solve incl. solder mask (Er 3.8) and the 0.2 mm coplanar GND pour, checked against Hammerstad-Jensen (51.0 vs 51.7 Ω): RF 0.30 mm = 49.2 Ω (was 0.35 mm = 45.6 Ω); USB pair 0.25/0.20 = 92 Ω (was 0.30/0.15 = 80 Ω). Tolerances (JLC: ±20% width, unstated prepreg) move RF between about 44 and 53 Ω. Applied in rev 0.6. Original task: **Stackup and impedance:** confirm the actual fabrication stackup and calculate RF 50 Ω and USB 90 Ω differential geometry, including reference planes and adjacent ground. Current 0.35 mm RF and 0.30/0.15 mm USB width/gap are estimates. Update geometry/rules if required. | Original §9 item 3; §4.9; README impedance and original layout guidance |
 | H07 | Open | **Layout review:** inspect autorouted traces, especially MCU/U5; inspect buck placement/current loops, modem decoupling, supply paths, RF returns and USB reference continuity. Resolve the README's original 1.5-2 mm modem-supply recommendation versus the implemented 0.6 mm bus with a documented assessment. Existing connectivity checks do not close this review. | README: Before ordering; PCB layout; original layout guidance |
@@ -491,12 +528,12 @@ not close the corresponding prototype test. Nothing is marked independently veri
 | ID | Status | Task / evidence needed | Source |
 |---|---|---|---|
 | F01 | Open | **Programming/bring-up:** establish a firmware build/flash path using ROM USB DFU (BOOT0 + RESET, JP3/JP4 default); retain SWD/debug access for diagnosis. | §1/§8; README programming instructions |
-| F02 | Open | **Modem driver:** USART2 AT interface at the specified baud, optional RTS/CTS, PB1 rail control, Q1/PWRKEY timing and STATUS waits; graceful power-down before rail removal, with bounded timeouts and hard-cut recovery only for a hung modem. | §4.5/§8; README modem power sequence |
+| F02 | Open | **Modem driver:** USART2 AT interface at the specified baud, optional RTS/CTS, PC13 rail control, Q1/PWRKEY timing and STATUS waits; graceful power-down before rail removal, with bounded timeouts and hard-cut recovery only for a hung modem. | §4.5/§8; README modem power sequence |
 | F03 | Open | **Cellular/cloud:** choose a 1.8 V-capable SIM/operator, configure LTE-M and intended NB-IoT fallback, and implement modem MQTT/TLS uploads to AWS IoT. Define endpoint/certificate provisioning, payload and delivery-success handling. | §1/§8; README SIM notes; provisioning/delivery details added in discussion |
 | F04 | Open | **Sampling/storage:** implement sensor acquisition, timestamps, 15-minute uploads or hourly batches, and retained readings during coverage failures. Define buffer capacity, persistence/write endurance and overflow policy within 6 KB EEPROM/128 KB flash/20 KB RAM; no external flash. | §1/§8; README batch strategy; buffer details added in discussion |
-| F05 | Open | **Battery handling:** read MAX17048 at 0x36, configure/handle ALRT on PA8 and stop uploads at the validated low-battery threshold (H09/T01); define recovery behavior. | §4.7/§8 |
+| F05 | Open | **Battery handling:** read MAX17048 at 0x36, configure/handle ALRT on PB9 (I2C1, separate from the Qwiic I2C2 bus) and stop uploads at the validated low-battery threshold (H09/T01); define recovery behavior. | §4.7/§8 |
 | F06 | Open | **Sleep/recovery:** implement Stop mode + RTC wake, independent watchdog, safe modem-off GPIO states without internal pulls, and sensor sleep settings. Fully power off the modem between uploads as chosen in §4.5. | §4.5/§4.6/§8; README field strategy |
-| F07 | Open | **SIM detect:** implement PB5 card detection using the verified H05 polarity and test missing/inserted-card behavior. | §8; README pin map/ordering checks |
+| F07 | Open | **SIM detect:** implement PB6 card detection using the verified H05 polarity and test missing/inserted-card behavior. | §8; README pin map/ordering checks |
 
 ### 9.4 Prototype validation before a production batch
 
@@ -517,7 +554,7 @@ they require physical hardware and do not imply that a prototype has already bee
 |---|---|---|---|
 | D01 | Open | **Keep descriptions consistent:** as findings are checked, update the relevant §4/§5/§8 text and README instructions, record evidence here and point CLAUDE.md to this master list. Reconcile KiCad version wording, historic versus current check results, and original layout advice versus actual geometry. Add navigation links to the root README when updating the summaries. | All Markdown files; consolidation follow-up |
 | O01 | Optional; undecided | **VBUS fuse:** decide whether to add the README's suggested polyfuse; document the choice without treating it as an already-approved circuit change. Check USB source/cable current margin in the power review/test. | README: Check these before ordering, item 7 |
-| O02 | Optional; deferred unless space is needed | **DNP headers:** reduce/remove J4/J5 only if needed; J5 is 25 mm long. | Original §9 item 8 |
+| O02 | Optional; deferred unless space is needed | **DNP headers:** J5 removed in rev 0.7; J4 became a 2x5 in rev 0.9 (debug UART + BOOT0 on the odd pins, PA15/PB3/PB4/PB5 + GND on the even pins); rev 0.9 also added J11, a second Qwiic on I2C3 (`sch_rev10.py`); the owner fitted it on the top, below J3, and it is assembled. | Original §9 item 8 |
 | O03 | Optional; deferred unless requirements change | **Alternative modem sleep/features:** DTR/DCD/RI remain available for UART sleep/carrier/wake features. Revisit PSM only with the §4.5 RAI/TLS-resumption conditions and measured benefit. OTA updates would require revisiting §4.2; neither is part of the current firmware baseline. | §4.2/§4.5/§8; README modem strategy |
 
 ## 10. References

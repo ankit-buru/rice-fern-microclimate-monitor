@@ -1,13 +1,16 @@
 """Grid maze router for a few leftover connections on a mostly-routed KiCad board.
 
-usage: maze_route.py board.kicad_pcb NET [NET ...]
+usage: maze_route.py board.kicad_pcb [--wide] NET [NET ...]
+--wide (power nets): 0.3 mm on F.Cu, 0.5 mm on In2 (no B.Cu), outer layers cost 3x so the route drops
+       to In2 next to each pad; In2 stays out of other nets' pours there (the +3V8 strip).
 Zone fills are ignored (they refill afterwards); free-standing GND stitching vias are removed first
 (run stitch.py again afterwards). Rule-area keepouts, other-net copper, holes and the edge are respected.
 """
 import sys, math, heapq, pcbnew
 from pcbnew import FromMM, ToMM, VECTOR2I
 
-BRD, NETS = sys.argv[1], sys.argv[2:]
+BRD, NETS = sys.argv[1], [a for a in sys.argv[2:] if a != "--wide"]
+WIDE = "--wide" in sys.argv[2:]
 OX, OY, W, H = 100.0, 100.0, 63.5, 46.0
 G = 0.1                                   # grid pitch, mm
 TW, CLR, VR = 0.15, 0.16, 0.25            # track width, clearance (+margin), via pad radius
@@ -16,6 +19,10 @@ EDGE = 0.3
 LAYERS = [pcbnew.F_Cu, pcbnew.In1_Cu, pcbnew.In2_Cu, pcbnew.B_Cu]
 NX, NY = int(W / G) + 1, int(H / G) + 1
 VIA_COST, DIAG = 25.0, math.sqrt(2)
+WID = [0.3, 0.3, 0.5, 0.3] if WIDE else [TW] * 4     # track width per layer
+LCOST = [3.0, 1.0, 1.0, 3.0] if WIDE else [1.0] * 4  # step cost per layer
+# In1 is solid GND; In2 carries power only (same rule as export_dsn.py gives Freerouting)
+POWER = set("+3V3 +5V +3V8 /BUCK_SW /BATT_IN /BATT_N /VBAT /VSYS /VDD_EXT /GNSS_VANT /GNSS_BIAS".split())
 
 b = pcbnew.LoadBoard(BRD)
 mm = lambda v: (ToMM(v.x) - OX, ToMM(v.y) - OY)
@@ -48,24 +55,24 @@ def seg_d2(px, py, ax, ay, bx, by):
     qx, qy = ax + t * dx - px, ay + t * dy - py
     return qx * qx + qy * qy
 
-def build(net, infl_track, infl_via):
-    """blocked[layer] for track centrelines, vblock for via centres; other-net copper only"""
+def build(net, infl, infl_via):
+    """blocked[layer] for track centrelines (infl[layer] = clearance + half width), vblock for via centres; other-net copper only"""
     blk = [bytearray(NX * NY) for _ in LAYERS]
     vblk = bytearray(NX * NY)
     def mark(layers, shape, extra_t, extra_v):
-        for li in layers: shape(blk[li], extra_t)
+        for li in layers: shape(blk[li], extra_t[li])
         shape(vblk, extra_v)
     for t in tl:
         if t.GetNetname() == net: continue
         if t.Type() == pcbnew.PCB_VIA_T:
             (x, y), r = mm(t.GetPosition()), ToMM(t.GetWidth(pcbnew.F_Cu)) / 2
             f = lambda g, e, x=x, y=y, r=r: rasterize(g, x - r - e, y - r - e, x + r + e, y + r + e, lambda px, py: (px - x) ** 2 + (py - y) ** 2 <= (r + e) ** 2)
-            mark(range(4), f, infl_track, infl_via)
+            mark(range(4), f, infl, infl_via)
         else:
             (ax, ay), (bx, by), r = mm(t.GetStart()), mm(t.GetEnd()), ToMM(t.GetWidth()) / 2
             li = LAYERS.index(t.GetLayer())
             f = lambda g, e, ax=ax, ay=ay, bx=bx, by=by, r=r: rasterize(g, min(ax, bx) - r - e, min(ay, by) - r - e, max(ax, bx) + r + e, max(ay, by) + r + e, lambda px, py: seg_d2(px, py, ax, ay, bx, by) <= (r + e) ** 2)
-            f(blk[li], infl_track); f(vblk, infl_via)
+            f(blk[li], infl[li]); f(vblk, infl_via)
     for p in pads:
         bb = p.GetBoundingBox(); x0, y0 = mm(bb.GetOrigin()); x1, y1 = mm(bb.GetEnd())
         if p.GetNetname() == net and p.GetNetname() != "":
@@ -76,7 +83,7 @@ def build(net, infl_track, infl_via):
         th = p.GetAttribute() in (pcbnew.PAD_ATTRIB_PTH, pcbnew.PAD_ATTRIB_NPTH)
         lays = range(4) if th else [LAYERS.index(l) for l in (pcbnew.F_Cu, pcbnew.B_Cu) if p.IsOnLayer(l)]
         f = lambda g, e, x0=x0, y0=y0, x1=x1, y1=y1: rasterize(g, x0 - e, y0 - e, x1 + e, y1 + e, lambda px, py: x0 - e <= px <= x1 + e and y0 - e <= py <= y1 + e)
-        for li in lays: f(blk[li], infl_track)
+        for li in lays: f(blk[li], infl[li])
         f(vblk, infl_via)
     for z in rules:
         bb = z.GetBoundingBox(); x0, y0 = mm(bb.GetOrigin()); x1, y1 = mm(bb.GetEnd())
@@ -84,10 +91,17 @@ def build(net, infl_track, infl_via):
         inside = lambda px, py, ol=ol, e=0.0: ol.Collide(VECTOR2I(FromMM(OX + px), FromMM(OY + py)), FromMM(e))
         for li, L in enumerate(LAYERS):
             if z.IsOnLayer(L) and z.GetDoNotAllowTracks():
-                rasterize(blk[li], x0 - infl_track, y0 - infl_track, x1 + infl_track, y1 + infl_track, lambda px, py: inside(px, py, e=infl_track))
+                rasterize(blk[li], x0 - infl[li], y0 - infl[li], x1 + infl[li], y1 + infl[li], lambda px, py, li=li: inside(px, py, e=infl[li]))
         if z.GetDoNotAllowVias():
             rasterize(vblk, x0 - infl_via, y0 - infl_via, x1 + infl_via, y1 + infl_via, lambda px, py: inside(px, py, e=infl_via))
-    for g, e in [(x, infl_track) for x in blk] + [(vblk, infl_via)]:
+    if WIDE:     # a power track on In2 must not cut another net's pour there (the +3V8 strip)
+        li = LAYERS.index(pcbnew.In2_Cu)
+        for z in b.Zones():
+            if z.GetIsRuleArea() or not z.IsOnLayer(pcbnew.In2_Cu) or z.GetNetname() in (net, "GND"): continue
+            bb = z.GetBoundingBox(); x0, y0 = mm(bb.GetOrigin()); x1, y1 = mm(bb.GetEnd()); ol = z.Outline()
+            rasterize(blk[li], x0 - infl[li], y0 - infl[li], x1 + infl[li], y1 + infl[li],
+                      lambda px, py, ol=ol: ol.Collide(VECTOR2I(FromMM(OX + px), FromMM(OY + py)), FromMM(infl[li])))
+    for g, e in [(x, infl[k]) for k, x in enumerate(blk)] + [(vblk, infl_via)]:
         m = EDGE + e
         for j in range(NY):
             for i in range(NX):
@@ -142,8 +156,10 @@ def route(net):
     isl = islands(net)
     if len(isl) < 2: print(net, "already connected"); return True
     isl.sort(key=len, reverse=True)
-    src, dst = cells_of(isl[0]), set().union(*[cells_of(g) for g in isl[1:]])
-    blk, vblk = build(net, CLR + TW / 2, CLR + VR)
+    allow = ({0, 2} if WIDE else {0, 2, 3}) if net in POWER else {0, 3}
+    src = {c for c in cells_of(isl[0]) if c[0] in allow}
+    dst = {c for c in set().union(*[cells_of(g) for g in isl[1:]]) if c[0] in allow}
+    blk, vblk = build(net, [CLR + w / 2 for w in WID], CLR + VR)
     tx = [c[1] for c in dst]; ty = [c[2] for c in dst]
     dist = {}; prev = {}; pq = []
     for c in src:
@@ -163,10 +179,10 @@ def route(net):
             if di and dj:   # no corner cutting
                 free = free and not blk[li][j * NX + ni] and not blk[li][nj * NX + i]
             if not free: continue
-            nd = d + w
+            nd = d + w * LCOST[li]
             if nd < dist.get(n, 1e18): dist[n] = nd; prev[n] = c; heapq.heappush(pq, (nd, n))
         if not vblk[j * NX + i]:
-            for lj in range(4):
+            for lj in allow:
                 if lj == li: continue
                 n = (lj, i, j)
                 if blk[lj][j * NX + i] and n not in dst and n not in src: continue
@@ -187,13 +203,13 @@ def route(net):
             k += 1; continue
         d = (c[1] - a[1], c[2] - a[2]); m = k + 1
         while m + 1 < len(path) and path[m + 1][0] == a[0] and (path[m + 1][1] - path[m][1], path[m + 1][2] - path[m][2]) == d: m += 1
-        t = pcbnew.PCB_TRACK(b); t.SetStart(P(a[1], a[2])); t.SetEnd(P(path[m][1], path[m][2])); t.SetWidth(FromMM(TW))
+        t = pcbnew.PCB_TRACK(b); t.SetStart(P(a[1], a[2])); t.SetEnd(P(path[m][1], path[m][2])); t.SetWidth(FromMM(WID[a[0]]))
         t.SetLayer(LAYERS[a[0]]); t.SetNet(nobj); b.Add(t); tl.append(t); nt += 1
         k = m
     print(f"{net}: routed, {len(path)} cells, {nt} segments, {nv} vias, cost {dist[goal]:.1f}")
     return True
 
-def route_all(net, tries=12):
+def route_all(net, tries=80):
     """join islands one at a time until the net is a single piece"""
     for _ in range(tries):
         if len(islands(net)) < 2: return True

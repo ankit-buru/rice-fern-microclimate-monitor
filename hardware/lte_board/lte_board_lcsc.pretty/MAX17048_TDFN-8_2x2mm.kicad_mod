@@ -31,9 +31,9 @@
 	(fp_line (start 1.25 1.60) (end 1.25 -1.60) (layer F.CrtYd) (width 0.05))
 	(fp_line (start 1.25 -1.60) (end -1.25 -1.60) (layer F.CrtYd) (width 0.05))
 	(fp_line (start -1.25 -1.60) (end -1.25 1.60) (layer F.CrtYd) (width 0.05))
-	(model "ee_C2682616.3dshapes/TDFN-8_L2.0-W2.0-P0.50-BL-EP1.2.wrl"
+	(model "${KICAD9_3DMODEL_DIR}/Package_DFN_QFN.3dshapes/DFN-8-1EP_2x2mm_P0.5mm_EP0.6x1.2mm.step"
 		(offset (xyz 0.000 0.000 0.000))
 		(scale (xyz 1 1 1))
-		(rotate (xyz 0 0 0))
+		(rotate (xyz 0 0 -90))
 	)
 )
