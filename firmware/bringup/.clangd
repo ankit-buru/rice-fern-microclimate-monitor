@@ -1,0 +1,4 @@
+CompileFlags:
+  CompilationDatabase: build
+  Remove: [-mcpu=*, -mthumb, -specs=*]
+  Add: [--target=arm-none-eabi]
