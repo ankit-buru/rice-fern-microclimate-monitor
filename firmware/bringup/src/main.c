@@ -193,6 +193,63 @@ static void mdm_watch(int period_s) {
   }
 }
 
+// ---- data connection (manual V1.05: CGNAPN §5.2.20, CNACT §7.2.1 NO_SAVE, CNCFG §7.2.2, SNPDPID/SNPING4 §14.2).
+// With no APN configured the network supplies the subscription's APN (CNCFG: "null ... subscription value").
+static int registration(void) {
+  char cereg[48];
+  modem_query("AT+CEREG?", "+CEREG:", cereg, sizeof cereg, 1000);
+  const char *comma = strchr(cereg, ',');
+  return comma ? atoi(comma + 1) : -1;
+}
+
+static void mdm_data(char *apn) {
+  if (!modem_ready()) return;
+  if (apn && !strcmp(apn, "off")) {
+    char urc[48];
+    cputs("deactivating PDP context 0 (AT+CNACT=0,0)\n");
+    modem_query("AT+CNACT=0,0", "+APP PDP:", urc, sizeof urc, 5000);
+    if (!urc[0]) modem_wait_line("+APP PDP:", urc, sizeof urc, 10000);   // the report can come before or after the OK
+    cprintf("  %s\n", urc[0] ? urc : "(no +APP PDP report)");
+    return;
+  }
+  int reg = registration();
+  if (reg != 1 && reg != 5) { cprintf("not registered (CEREG stat %d): wait for \"registered\" in \"mdm watch\" first\n", reg); return; }
+  at_show("AT+CGNAPN", "APN offered by the network (1 = valid)", 2000);
+  if (apn && *apn) {
+    char cmd[96]; snprintf(cmd, sizeof cmd, "AT+CNCFG=0,1,\"%s\"", apn);
+    cputs("setting the APN on context 0 (the manual doesn't say whether CNCFG is saved: assume it may persist)\n");
+    at_show(cmd, "configure PDP context 0, IPv4", 2000);
+  }
+  at_show("AT+CNCFG?", "PDP context settings (empty APN = use the subscription's)", 2000);
+  cputs("activating PDP context 0 (AT+CNACT=0,1), waiting up to 60 s for +APP PDP: 0,ACTIVE...\n");
+  char urc[48];
+  uint32_t t0 = millis();
+  if (modem_query("AT+CNACT=0,1", "+APP PDP:", urc, sizeof urc, 5000) != 0) { cputs("  activation refused (+CME ERROR)\n"); return; }
+  int ms = urc[0] ? (int)(millis() - t0) : modem_wait_line("+APP PDP:", urc, sizeof urc, 60000);   // the report can beat the OK
+  if (ms < 0) { cputs("  no +APP PDP report in 60 s\n"); return; }
+  if (strstr(urc, "DEACTIVE")) { cputs("  the network refused the data session: the SIM may need its APN (\"mdm data <apn>\") or activation\n"); return; }
+  cprintf("  active after %d ms\n", ms);
+  at_show("AT+CNACT?", "IP address", 2000);
+  cputs("next: \"mdm ping\" (and \"mdm data off\" when done)\n");
+}
+
+static void mdm_ping(char *a) {
+  if (!modem_ready()) return;
+  char host[64] = "8.8.8.8";
+  int count = 4;
+  if (a && *a) {
+    char *sp = strchr(a, ' ');
+    if (sp) { *sp++ = 0; count = atoi(sp); }
+    strncpy(host, a, sizeof host - 1);
+  }
+  if (count < 1 || count > 20) count = 4;
+  modem_at("AT+SNPDPID=0", 1000, false);                         // ping over PDP context 0
+  char cmd[112]; snprintf(cmd, sizeof cmd, "AT+SNPING4=\"%s\",%d,32,5000", host, count);
+  cprintf("ping %s x%d (32 bytes, 5 s timeout): +SNPING4: <reply #>,<IP>,<ms>\n", host, count);
+  int rc = modem_at(cmd, (unsigned)count * 6000u + 5000u, true);
+  if (rc != 0) cputs("  no replies: is the data session active (\"mdm data\")? Some IoT SIMs also block ICMP\n");
+}
+
 static void cmd_mdm(char *a) {
   if (a && !strcmp(a, "on")) {
     cputs("modem on: rail (PC13), 1.2 s PWRKEY, waiting for STATUS...\n");
@@ -211,6 +268,12 @@ static void cmd_mdm(char *a) {
     mdm_scan();
   } else if (a && !strncmp(a, "watch", 5)) {
     mdm_watch(arg_int(a + 5, 5));
+  } else if (a && !strncmp(a, "data", 4)) {
+    char *p = a + 4; while (*p == ' ') p++;
+    mdm_data(p);
+  } else if (a && !strncmp(a, "ping", 4)) {
+    char *p = a + 4; while (*p == ' ') p++;
+    mdm_ping(p);
   } else if (a && !strcmp(a, "off")) {
     cputs("modem off: AT+CPOWD=1, waiting for STATUS low...\n");
     int ms = modem_power_off();
@@ -301,7 +364,8 @@ static const struct { const char *name; void (*fn)(char *); const char *help; } 
   { "fg",       cmd_fg,       "read the MAX17048 fuel gauge (cell voltage, state of charge)" },
   { "gnss",     cmd_gnss,     "gnss on|off  antenna feed (U10) and its over-current flag" },
   { "mdm",      cmd_mdm,      "mdm on|off|kill|pwrkey [ms]  modem power sequence and status\n"
-                              "            mdm info | scan | watch [s]  identity and config, operator scan, live signal" },
+                              "            mdm info | scan | watch [s]  identity and config, operator scan, live signal\n"
+                              "            mdm data [apn|off] | ping [host [count]]  data session and IP ping" },
   { "at",       cmd_at,       "at <command>  one AT command, e.g. \"at +CPIN?\" or \"at +CSQ\"" },
   { "bridge",   cmd_bridge,   "pass the console straight through to the modem UART (Ctrl-] exits)" },
   { "dfu",      cmd_dfu,      "reboot into the ROM USB bootloader for flashing" },

@@ -18,3 +18,4 @@ int  modem_at(const char *cmd, unsigned timeout_ms, bool echo);   // send cmd + 
 int  modem_query(const char *cmd, const char *prefix, char *out, size_t outlen, unsigned timeout_ms);  // first reply line starting with prefix
 bool modem_sync(unsigned tries);          // "AT" until OK (the modem auto-bauds on the first ATs)
 void modem_drain(unsigned ms);            // print whatever the modem says for ms (start-up messages, URCs)
+int  modem_wait_line(const char *prefix, char *out, size_t outlen, unsigned timeout_ms);  // print lines until one starts with prefix: ms, -1 = timeout

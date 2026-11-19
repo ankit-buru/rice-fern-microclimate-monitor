@@ -159,6 +159,28 @@ void modem_drain(unsigned ms) {
   }
 }
 
+int modem_wait_line(const char *prefix, char *out, size_t outlen, unsigned timeout_ms) {
+  char line[160];
+  unsigned n = 0;
+  uint32_t t0 = millis();
+  while (millis() - t0 < timeout_ms) {
+    system_poll();
+    int c;
+    while ((c = modem_getc()) >= 0) {
+      if (c == '\r') continue;
+      if (c != '\n') { if (n < sizeof line - 1) line[n++] = (char)c; continue; }
+      line[n] = 0; n = 0;
+      if (!line[0]) continue;
+      cprintf("  < %s\n", line);
+      if (!strncmp(line, prefix, strlen(prefix))) {
+        if (out) { strncpy(out, line, outlen - 1); out[outlen - 1] = 0; }
+        return (int)(millis() - t0);
+      }
+    }
+  }
+  return -1;
+}
+
 bool modem_sync(unsigned tries) {
   for (unsigned i = 0; i < tries; i++)
     if (modem_at("AT", 500, false) == 0) return true;

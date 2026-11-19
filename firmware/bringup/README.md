@@ -60,7 +60,9 @@ screen /dev/cu.usbmodem* 115200
 | 10 | `mdm info` | model, firmware, IMEI, SIM state, RAT/band settings | U5 RXD/TXD |
 | 11 | `mdm scan` (antenna on J6) | a list of operators, access tech 7 = Cat-M, 9 = NB-IoT (1-3 min) | antenna, J6, RF path R19/C61/D6 |
 | 12 | `mdm watch` | RSSI in dBm, serving cell (band, RSRP/RSRQ), registration | antenna placement, SIM |
-| 13 | `mdm off` | "NORMAL POWER DOWN", STATUS low, then the rail off | |
+| 13 | `mdm data` (once registered) | network APN, "+APP PDP: 0,ACTIVE", an IP address | SIM activation; try `mdm data <apn>` |
+| 14 | `mdm ping` (default 8.8.8.8 x4) | `+SNPING4: <n>,<ip>,<ms>` replies | some IoT SIMs block ICMP |
+| 15 | `mdm data off`, `mdm off` | data session closed, "NORMAL POWER DOWN", rail off | |
 
 The modem commands are read-only: they never write the modem's stored settings. The AT commands were checked
 against the SIM7070/SIM7080/SIM7090 Series AT Command Manual V1.05. Without a SIM it can't register; whether it
