@@ -19,6 +19,26 @@ static int at(const char *fmt, const char *arg, unsigned timeout_ms) {
   return modem_at(cmd, timeout_ms, true);
 }
 
+// DNS (manual §19.2): AT+CDNSCFG? lists the servers (0.0.0.0 = none); AT+CDNSGIP="<host>",<retries>,<ms> answers OK,
+// then "+CDNSGIP: 1,<host>,<ip>" or "+CDNSGIP: 0,<err>" (4 no server, 5 timeout, 6 no config).
+bool dns_check(const char *host) {
+  char cmd[96], urc[96];
+  modem_at("AT+CDNSCFG?", 2000, true);
+  snprintf(cmd, sizeof cmd, "AT+CDNSGIP=\"%s\",2,5000", host);
+  urc[0] = 0;
+  if (modem_query(cmd, "+CDNSGIP:", urc, sizeof urc, 3000) != 0) { cputs("  DNS lookup refused\n"); return false; }
+  if (!urc[0] && modem_wait_line("+CDNSGIP:", urc, sizeof urc, 20000) < 0) { cputs("  no DNS answer in 20 s\n"); return false; }
+  cprintf("  %s\n", urc);
+  return !strncmp(urc, "+CDNSGIP: 1", 11);
+}
+
+static void url_host(char *host, size_t n) {                     // "http://name:port" -> "name"
+  const char *p = strstr(cfg.url, "://"); p = p ? p + 3 : cfg.url;
+  size_t k = 0;
+  while (p[k] && p[k] != ':' && p[k] != '/' && k < n - 1) { host[k] = p[k]; k++; }
+  host[k] = 0;
+}
+
 int http_post(const char *path, const char *body, char *reply, size_t replylen) {
   if (!cfg.url[0]) { cputs("  no server URL: \"cfg url http://host:port\"\n"); return -1; }
   int status = -1;
@@ -27,7 +47,14 @@ int http_post(const char *path, const char *body, char *reply, size_t replylen) 
   at("AT+SHCONF=\"URL\",\"%s\"", cfg.url, 2000);
   modem_at("AT+SHCONF=\"BODYLEN\",1024", 1000, true);
   modem_at("AT+SHCONF=\"HEADERLEN\",350", 1000, true);
-  if (modem_at("AT+SHCONN", 30000, true) != 0) { cputs("  HTTP connect failed (server down? port not forwarded?)\n"); return -1; }
+  if (modem_at("AT+SHCONN", 30000, true) != 0) {
+    char host[64]; url_host(host, sizeof host);
+    cputs("  HTTP connect failed. Modem HTTP settings, then a DNS check of the server name:\n");
+    modem_at("AT+SHCONF?", 2000, true);
+    modem_at("AT+SHSTATE?", 1000, true);
+    dns_check(host);
+    return -1;
+  }
   modem_at("AT+SHCHEAD", 1000, true);
   modem_at("AT+SHAHEAD=\"Content-Type\",\"application/json\"", 1000, true);
   modem_at("AT+SHAHEAD=\"User-Agent\",\"treeweather-bringup\"", 1000, true);
@@ -135,14 +162,18 @@ bool report_cycle(bool power_off_after) {
     tud_mounted() ? "true" : "false", hw_vdda_mv(), fg ? "true" : "false",
     fg ? (unsigned long)vcell * 78125u / 1000000u : 0ul, fg ? (unsigned)(soc * 100u / 256u) : 0u,
     pin_read(BAT_ALRT) ? 0 : 1, pin_read(SIM_DET), rssi_csq, plmn, band, rsrp, rsrq, rssi, sinr, reg_ms, cfg.interval_s);
-  cprintf("report: %s\n", body);
+  cputs("report: "); cputs(body); cputs("\n");               // cputs: no 256-byte cprintf limit
 
   // data session, POST, reply
   {
-    char urc[48];
-    if (modem_query("AT+CNACT=0,1", "+APP PDP:", urc, sizeof urc, 5000) != 0) { cputs("report: data session refused\n"); goto off; }
-    if (!urc[0] && modem_wait_line("+APP PDP:", urc, sizeof urc, 60000) < 0) { cputs("report: no data session\n"); goto off; }
-    if (strstr(urc, "DEACTIVE")) { cputs("report: data session refused by the network\n"); goto off; }
+    char urc[48], st[48];
+    modem_query("AT+CNACT?", "+CNACT: 0,", st, sizeof st, 2000);      // "+CNACT: 0,<status>,<ip>": 1 = already active
+    bool was_active = !strncmp(st, "+CNACT: 0,1", 11);
+    if (!was_active) {
+      if (modem_query("AT+CNACT=0,1", "+APP PDP:", urc, sizeof urc, 5000) != 0) { cputs("report: data session refused\n"); goto off; }
+      if (!urc[0] && modem_wait_line("+APP PDP:", urc, sizeof urc, 60000) < 0) { cputs("report: no data session\n"); goto off; }
+      if (strstr(urc, "DEACTIVE")) { cputs("report: data session refused by the network\n"); goto off; }
+    }
     char reply[512];
     int status = http_post("/report", body, reply, sizeof reply);
     cprintf("report: HTTP %d, reply %s\n", status, reply[0] ? reply : "(empty)");
@@ -152,7 +183,7 @@ bool report_cycle(bool power_off_after) {
       int iv = json_int(reply, "interval_s", 0);
       if (iv >= 60 && (uint32_t)iv != cfg.interval_s) { cfg.interval_s = (uint32_t)iv; config_save(); cprintf("report: interval now %d s\n", iv); }
     }
-    modem_query("AT+CNACT=0,0", "+APP PDP:", urc, sizeof urc, 5000);
+    if (!was_active) modem_query("AT+CNACT=0,0", "+APP PDP:", urc, sizeof urc, 5000);   // leave it as we found it
   }
 off:
   if (power_off_after && !was_on) {

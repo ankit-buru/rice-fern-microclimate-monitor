@@ -273,6 +273,14 @@ static void cmd_mdm(char *a) {
   } else if (a && !strncmp(a, "data", 4)) {
     char *p = a + 4; while (*p == ' ') p++;
     mdm_data(p);
+  } else if (a && !strncmp(a, "dns", 3)) {
+    char *p = a + 3; while (*p == ' ') p++;
+    char host[64] = "";
+    if (*p) { strncpy(host, p, sizeof host - 1); }
+    else { const char *u = strstr(cfg.url, "://"); u = u ? u + 3 : cfg.url;
+           for (size_t k = 0; u[k] && u[k] != ':' && u[k] != '/' && k < sizeof host - 1; k++) { host[k] = u[k]; host[k + 1] = 0; } }
+    if (!host[0]) { cputs("mdm dns <host>  (or set cfg url first)\n"); return; }
+    if (modem_ready()) { cprintf("resolving %s (data session must be active: \"mdm data\")\n", host); dns_check(host); }
   } else if (a && !strncmp(a, "ping", 4)) {
     char *p = a + 4; while (*p == ' ') p++;
     mdm_ping(p);
@@ -390,7 +398,7 @@ static const struct { const char *name; void (*fn)(char *); const char *help; } 
   { "gnss",     cmd_gnss,     "gnss on|off  antenna feed (U10) and its over-current flag" },
   { "mdm",      cmd_mdm,      "mdm on|off|kill|pwrkey [ms]  modem power sequence and status\n"
                               "            mdm info | scan | watch [s]  identity and config, operator scan, live signal\n"
-                              "            mdm data [apn|off] | ping [host [count]]  data session and IP ping" },
+                              "            mdm data [apn|off] | ping [host [count]] | dns [host]  data session, ping, DNS" },
   { "at",       cmd_at,       "at <command>  one AT command, e.g. \"at +CPIN?\" or \"at +CSQ\"" },
   { "bridge",   cmd_bridge,   "pass the console straight through to the modem UART (Ctrl-] exits)" },
   { "cfg",      cmd_cfg,      "cfg [url <http://host:port> | token <s> | interval <s>]  server settings (EEPROM)" },
