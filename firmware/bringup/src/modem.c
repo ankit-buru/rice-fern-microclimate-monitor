@@ -181,6 +181,17 @@ int modem_wait_line(const char *prefix, char *out, size_t outlen, unsigned timeo
   return -1;
 }
 
+size_t modem_read_raw(char *buf, size_t n, unsigned timeout_ms) {
+  size_t k = 0;
+  uint32_t t0 = millis();
+  while (k < n && millis() - t0 < timeout_ms) {
+    int c = modem_getc();
+    if (c < 0) { system_poll(); continue; }
+    buf[k++] = (char)c;
+  }
+  return k;
+}
+
 bool modem_sync(unsigned tries) {
   for (unsigned i = 0; i < tries; i++)
     if (modem_at("AT", 500, false) == 0) return true;

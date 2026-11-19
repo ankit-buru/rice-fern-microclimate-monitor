@@ -63,6 +63,8 @@ screen /dev/cu.usbmodem* 115200
 | 13 | `mdm data` (once registered) | network APN, "+APP PDP: 0,ACTIVE", an IP address | SIM activation; try `mdm data <apn>` |
 | 14 | `mdm ping` (default 8.8.8.8 x4) | `+SNPING4: <n>,<ip>,<ms>` replies | some IoT SIMs block ICMP |
 | 15 | `mdm data off`, `mdm off` | data session closed, "NORMAL POWER DOWN", rail off | |
+| 16 | `cfg url http://<ip>:7070`, `cfg token <secret>`, `report` | a JSON report on the test server, "HTTP 200" | [server/](../../server/README.md) running, port forwarded |
+| 17 | unplug USB with a cell on J9 | D2 keeps blinking; ~15 s after a fresh boot on the battery, field mode reports every interval | Q4/R34 switch-over, battery path |
 
 The modem commands are read-only: they never write the modem's stored settings. The AT commands were checked
 against the SIM7070/SIM7080/SIM7090 Series AT Command Manual V1.05. Without a SIM it can't register; whether it

@@ -7,6 +7,8 @@
 #include "hw.h"
 #include "i2c.h"
 #include "modem.h"
+#include "config.h"
+#include "report.h"
 #include "tusb.h"
 
 #define FW_VERSION "bringup 0.1"
@@ -343,6 +345,29 @@ static void cmd_selftest(char *a) {
   cprintf("%d failure%s\n", fails, fails == 1 ? "" : "s");
 }
 
+static void cmd_cfg(char *a) {
+  char *v = a ? strchr(a, ' ') : NULL;
+  if (v) { *v++ = 0; while (*v == ' ') v++; }
+  bool changed = false;
+  if (a && v && !strcmp(a, "url")) {
+    if (strncmp(v, "http://", 7) && strncmp(v, "https://", 8)) { cputs("url must start with http:// or https:// (host and port only, e.g. http://1.2.3.4:7070)\n"); return; }
+    strncpy(cfg.url, v, sizeof cfg.url - 1); cfg.url[sizeof cfg.url - 1] = 0; changed = true;
+  } else if (a && v && !strcmp(a, "token")) {
+    strncpy(cfg.token, strcmp(v, "-") ? v : "", sizeof cfg.token - 1); cfg.token[sizeof cfg.token - 1] = 0; changed = true;
+  } else if (a && v && !strcmp(a, "interval")) {
+    int s = atoi(v); if (s < 60) { cputs("interval: 60 s minimum\n"); return; }
+    cfg.interval_s = (uint32_t)s; changed = true;
+  } else if (a && *a) { cputs("cfg [url <http://host:port> | token <secret|-> | interval <s>]\n"); return; }
+  if (changed) cputs(config_save() ? "saved to EEPROM\n" : "EEPROM write FAILED (read-back mismatch)\n");
+  cprintf("server  %s\ntoken   %s\ninterval %lu s\n", cfg.url[0] ? cfg.url : "(not set)", cfg.token[0] ? "(set)" : "(none)", cfg.interval_s);
+}
+
+static void cmd_report(char *a) { report_cycle(arg_int(a, 1) != 0); }
+static void cmd_field(char *a) {
+  if (!cfg.url[0]) { cputs("set the server first: cfg url http://host:port\n"); return; }
+  field_mode();
+}
+
 static void cmd_dfu(char *a) {
   cputs("rebooting into the ST ROM DFU bootloader (0483:df11). Flash with:  cmake --build build --target flash\n");
   delay_ms(200);
@@ -368,6 +393,9 @@ static const struct { const char *name; void (*fn)(char *); const char *help; } 
                               "            mdm data [apn|off] | ping [host [count]]  data session and IP ping" },
   { "at",       cmd_at,       "at <command>  one AT command, e.g. \"at +CPIN?\" or \"at +CSQ\"" },
   { "bridge",   cmd_bridge,   "pass the console straight through to the modem UART (Ctrl-] exits)" },
+  { "cfg",      cmd_cfg,      "cfg [url <http://host:port> | token <s> | interval <s>]  server settings (EEPROM)" },
+  { "report",   cmd_report,   "report [0]  one check-in: modem on, register, POST, apply reply (0 = leave modem on)" },
+  { "field",    cmd_field,    "report every interval (also starts by itself ~15 s after boot with no USB host)" },
   { "dfu",      cmd_dfu,      "reboot into the ROM USB bootloader for flashing" },
   { "reset",    cmd_reset,    "software reset" },
 };
@@ -392,9 +420,15 @@ int main(void) {
   console_init();
   tusb_rhport_init_t init = { .role = TUSB_ROLE_DEVICE, .speed = TUSB_SPEED_AUTO };
   tusb_init(0, &init);
+  config_load();
 
   bool was_connected = false;
+  bool field_checked = false;
   for (;;) {
+    if (!field_checked && millis() > 15000) {                    // no USB host by now: running on the battery
+      field_checked = true;
+      if (!tud_mounted() && cfg.url[0]) field_mode();
+    }
     system_poll();
     bool c = console_usb_connected();
     if (c && !was_connected) {                                    // a terminal just opened the port
