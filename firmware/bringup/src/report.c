@@ -118,50 +118,113 @@ static void cpsi_fields(const char *s, char *plmn, size_t plen, int *band, int *
   *rsrq = atoi(f[10]); *rsrp = atoi(f[11]); *rssi = atoi(f[12]); *sinr = 2 * atoi(f[13]) - 20;   // SINR = 2*RSSNR-20
 }
 
+// ---------------------------------------------------------------- fuel gauge (MAX17048, register map from memory)
+// VCELL 0x02 (78.125 uV/LSB), SOC 0x04 (1/256 %), HIBRT 0x0A, CRATE 0x16 (signed, 0.208 %/h per LSB).
+// In hibernate the gauge samples VCELL only every 45 s, so a reading can be the voltage from up to 45 s earlier:
+// before the modem came on, or during it. HIBRT = 0x0000 keeps it active (a fresh sample every 250 ms, ~20 uA more).
+// The write only happens if HIBRT reads its power-on default 0x8030, which also checks the register address.
+static int hibrt_seen = -1;                                     // HIBRT as first read since MCU reset (-1 = no gauge)
+
+static int cell_mv(void) {                                     // -1 = no gauge
+  uint16_t v;
+  i2c_init(1);
+  return i2c_read_reg16(1, MAX17048_ADDR, 0x02, &v) == I2C_OK ? (int)((uint32_t)v * 78125u / 1000000u) : -1;
+}
+
+static void fg_stay_active(void) {
+  uint16_t h;
+  i2c_init(1);
+  if (i2c_read_reg16(1, MAX17048_ADDR, 0x0A, &h) != I2C_OK) return;
+  if (hibrt_seen < 0) hibrt_seen = h;
+  if (h == 0x8030) {
+    const uint8_t w[3] = { 0x0A, 0x00, 0x00 };
+    i2c_xfer(1, MAX17048_ADDR, w, 3, NULL, 0);
+    delay_ms(600);                                              // a couple of fresh 250 ms samples
+  }
+}
+
+// AT+CENG? serving cell (manual §5.2.30), quotes stripped: "earfcn,pci,rsrp,rssi,rsrq,sinr,tac,cellid,mcc,mnc,txpower"
+// txpower is in 0.1 dBm and only meaningful while the modem is transmitting.
+static void ceng_serving(char *out, size_t n, int *tx) {
+  char line[96] = "";
+  out[0] = 0; *tx = -999;
+  modem_query("AT+CENG?", "+CENG: 0,\"", line, sizeof line, 2000);
+  const char *q = strchr(line, '"');
+  if (!q) return;
+  size_t k = 0;
+  for (q++; *q && *q != '"' && k < n - 1; q++) out[k++] = *q;
+  out[k] = 0;
+  const char *last = strrchr(out, ',');
+  if (last && last[1]) *tx = atoi(last + 1);
+}
+
 static int json_int(const char *s, const char *key, int dflt) {
   char k[32]; snprintf(k, sizeof k, "\"%s\":", key);
   const char *p = strstr(s, k);
   return p ? atoi(p + strlen(k)) : dflt;
 }
 
+// Measured at the end of a cycle, after its report had gone: sent with the next one (-1 = none yet).
+static int prev_post_mv = -1, prev_off_mv = -1, prev_post_tx = -999;
+static long prev_cycle_ms = -1;
+
 bool report_cycle(bool power_off_after) {
   uint32_t t_start = millis();
+  fg_stay_active();
+  int pre_mv = cell_mv();                                       // at rest (or with the modem already on)
   bool was_on = modem_status();
   if (!was_on) {
     cputs("report: modem on\n");
     if (modem_power_on() < 0 || !modem_sync(10)) { cputs("report: modem did not start\n"); modem_kill(); return false; }
     modem_at("ATE0", 1000, false); modem_at("AT+CMEE=2", 1000, false);
   }
+  uint32_t on_ms = millis() - t_start;
   cputs("report: waiting for registration (up to 180 s)\n");
   int reg = -1;
   uint32_t t0 = millis();
-  while (millis() - t0 < 180000) { reg = registration(); if (reg == 1 || reg == 5) break; delay_ms(2000); }
+  while (millis() - t0 < 180000) { reg = registration(); if (reg == 1 || reg == 5) break; delay_ms(200); }
   uint32_t reg_ms = millis() - t0;
   bool ok = false;
+  int post_mv = -1, post_tx = -999;
   if (reg != 1 && reg != 5) { cprintf("report: not registered (CEREG %d)\n", reg); goto off; }
 
   // measurements: everything in one JSON object (integers only: no printf float support needed)
-  char csq[48] = "", cpsi[160] = "", imei[32] = "", plmn[12] = "";
-  int rssi_csq = 99, band = 0, rsrq = 0, rsrp = 0, rssi = 0, sinr = 0;
-  modem_query("AT+CSQ", "+CSQ:", csq, sizeof csq, 1000);
-  if (csq[0]) rssi_csq = atoi(csq + 6);
+  int reg_mv = cell_mv();                                       // just registered: the attach signalling has just happened
+  char csq[48] = "", cpsi[160] = "", imei[32] = "", plmn[12] = "", ceng[64];
+  int rssi_csq = 99, band = 0, rsrq = 0, rsrp = 0, rssi = 0, sinr = 0, reg_tx;
+  uint32_t t1 = millis();                                       // right after registering CSQ can still be 99 and CPSI
+  do {                                                          // empty: wait up to 5 s for a measurement
+    modem_query("AT+CSQ", "+CSQ:", csq, sizeof csq, 1000);
+    rssi_csq = csq[0] ? atoi(csq + 6) : 99;
+    if (rssi_csq != 99) break;
+    delay_ms(500);
+  } while (millis() - t1 < 5000);
+  uint32_t meas_ms = millis() - t1;
   modem_query("AT+CPSI?", "+CPSI:", cpsi, sizeof cpsi, 2000);
   cpsi_fields(cpsi, plmn, sizeof plmn, &band, &rsrq, &rsrp, &rssi, &sinr);
+  modem_at("AT+CENG=1", 1000, false);
+  ceng_serving(ceng, sizeof ceng, &reg_tx);
   modem_query("AT+GSN", "8", imei, sizeof imei, 1000);       // IMEIs start with a digit; 86... for this module
   i2c_init(1);
-  uint16_t vcell = 0, soc = 0;
+  uint16_t vcell = 0, soc = 0, crate = 0;
   bool fg = i2c_read_reg16(1, MAX17048_ADDR, 0x02, &vcell) == I2C_OK && i2c_read_reg16(1, MAX17048_ADDR, 0x04, &soc) == I2C_OK;
+  if (fg) i2c_read_reg16(1, MAX17048_ADDR, 0x16, &crate);
   uint32_t uid[3]; hw_uid(uid);
 
-  char body[640];
-  snprintf(body, sizeof body,
-    "{\"id\":\"%08lX%08lX%08lX\",\"imei\":\"%s\",\"fw\":\"bringup\",\"seq\":%u,\"uptime_s\":%lu,\"reset\":\"%s\","
+  char body[900];
+  int n = snprintf(body, sizeof body,
+    "{\"id\":\"%08lX%08lX%08lX\",\"imei\":\"%s\",\"fw\":\"bringup-2\",\"seq\":%u,\"uptime_s\":%lu,\"reset\":\"%s\","
     "\"usb\":%s,\"vdda_mv\":%u,\"fg\":%s,\"vcell_mv\":%lu,\"soc_pct_x100\":%u,\"alrt\":%d,\"sim\":%d,"
-    "\"csq\":%d,\"plmn\":\"%s\",\"band\":%d,\"rsrp\":%d,\"rsrq\":%d,\"rssi\":%d,\"sinr\":%d,\"reg_ms\":%lu,\"interval_s\":%lu}",
+    "\"csq\":%d,\"plmn\":\"%s\",\"band\":%d,\"rsrp\":%d,\"rsrq\":%d,\"rssi\":%d,\"sinr\":%d,\"reg_ms\":%lu,\"interval_s\":%lu,",
     uid[0], uid[1], uid[2], imei, seq, millis() / 1000, hw_reset_cause(),
     tud_mounted() ? "true" : "false", hw_vdda_mv(), fg ? "true" : "false",
     fg ? (unsigned long)vcell * 78125u / 1000000u : 0ul, fg ? (unsigned)(soc * 100u / 256u) : 0u,
     pin_read(BAT_ALRT) ? 0 : 1, pin_read(SIM_DET), rssi_csq, plmn, band, rsrp, rsrq, rssi, sinr, reg_ms, cfg.interval_s);
+  snprintf(body + n, sizeof body - (size_t)n,
+    "\"hibrt\":%d,\"crate_raw\":%d,\"pre_mv\":%d,\"reg_mv\":%d,\"on_ms\":%lu,\"meas_ms\":%lu,\"ceng\":\"%s\",\"reg_tx\":%d,"
+    "\"prev_post_mv\":%d,\"prev_post_tx\":%d,\"prev_off_mv\":%d,\"prev_cycle_ms\":%ld}",
+    hibrt_seen, (int16_t)crate, pre_mv, reg_mv, on_ms, meas_ms, ceng, reg_tx,
+    prev_post_mv, prev_post_tx, prev_off_mv, prev_cycle_ms);
   cputs("report: "); cputs(body); cputs("\n");               // cputs: no 256-byte cprintf limit
 
   // data session, POST, reply
@@ -183,25 +246,45 @@ bool report_cycle(bool power_off_after) {
       int iv = json_int(reply, "interval_s", 0);
       if (iv >= 60 && (uint32_t)iv != cfg.interval_s) { cfg.interval_s = (uint32_t)iv; config_save(); cprintf("report: interval now %d s\n", iv); }
     }
+    post_mv = cell_mv();                                        // straight after the upload, data session still up
+    { char c[64]; ceng_serving(c, sizeof c, &post_tx); }
     if (!was_active) modem_query("AT+CNACT=0,0", "+APP PDP:", urc, sizeof urc, 5000);   // leave it as we found it
   }
 off:
   if (power_off_after && !was_on) {
     if (modem_power_off() < 0) { cputs("report: modem would not power down, cutting the rail\n"); modem_kill(); }
-  }
-  cprintf("report: %s in %lu s\n", ok ? "done" : "FAILED", (millis() - t_start) / 1000);
+    delay_ms(1000);
+    prev_off_mv = cell_mv();                                    // modem rail off again
+  } else prev_off_mv = -1;
+  prev_post_mv = post_mv; prev_post_tx = post_tx;
+  prev_cycle_ms = (long)(millis() - t_start);
+  cprintf("report: %s in %lu s (cell %d mV before, %d after the upload, %d with the modem off)\n", ok ? "done" : "FAILED",
+          (millis() - t_start) / 1000, pre_mv, post_mv, prev_off_mv);
   return ok;
 }
 
+bool field_active;
+
 void field_mode(void) {
-  cprintf("field mode: a report every %lu s to %s. Any key (or plugging USB in) stops it.\n", cfg.interval_s, cfg.url);
+  cprintf("field mode: a report every %lu s to %s, watchdog on, no uploads below %d mV.\n"
+          "Any key (or plugging USB in) stops it.\n", cfg.interval_s, cfg.url, FIELD_MIN_MV);
   bool usb_at_start = tud_mounted();
+  hw_watchdog_start();                                          // a hang now ends in a reset, then field mode again
+  field_active = true;
   for (;;) {
-    report_cycle(true);
+    int mv = cell_mv();
+    if (mv >= 0 && mv < FIELD_MIN_MV && !tud_mounted())
+      cprintf("field: cell %d mV is below %d mV: skipping this upload\n", mv, FIELD_MIN_MV);
+    else
+      report_cycle(true);
     uint32_t t0 = millis();
     while (millis() - t0 < cfg.interval_s * 1000u) {
       system_poll();
-      if (console_getc() >= 0 || (!usb_at_start && tud_mounted())) { cputs("field mode stopped\n"); return; }
+      if (console_getc() >= 0 || (!usb_at_start && tud_mounted())) {
+        field_active = false;
+        cputs("field mode stopped (the watchdog keeps running until the next reset)\n");
+        return;
+      }
     }
   }
 }

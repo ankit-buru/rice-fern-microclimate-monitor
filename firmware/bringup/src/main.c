@@ -19,9 +19,13 @@ static bool heartbeat = true;
 
 void system_poll(void) {
   tud_task();
+  hw_watchdog_kick();
   static uint32_t last;
-  if (heartbeat && millis() - last >= 1000) last = millis();
-  if (heartbeat) pin_write(LED_USER, millis() - last < 60);     // 60 ms flash every second
+  uint32_t period = field_active ? 2000 : 1000;
+  if (heartbeat && millis() - last >= period) last = millis();
+  uint32_t t = millis() - last;
+  if (heartbeat)                                                 // console: one 60 ms flash a second;
+    pin_write(LED_USER, field_active ? (t < 60 || (t >= 200 && t < 260)) : t < 60);   // field mode: a double flash every 2 s
 }
 
 // ---------------------------------------------------------------- helpers
@@ -315,7 +319,7 @@ static void cmd_bridge(char *a) {
   modem_uart_attach();
   cputs("console <-> modem UART bridge. Ctrl-] (0x1D) to leave.\n");
   for (;;) {
-    tud_task();
+    system_poll();                                               // USB + watchdog
     int c;
     while ((c = console_getc()) >= 0) {
       if (c == 0x1D) { cputs("\nbridge closed\n"); return; }

@@ -97,6 +97,27 @@ void hw_init(void) {
   pin_mode(PIN(A, 11), MODE_IN); pin_mode(PIN(A, 12), MODE_IN);      // USB DM/DP: the USB peripheral takes over
 }
 
+// ---------------------------------------------------------------- independent watchdog
+// Keys 0xCCCC (start), 0x5555 (unlock PR/RLR), 0xAAAA (reload): the usual STM32 IWDG values, as remembered.
+// A software reset stops it, and hw_early() jumps to the ROM bootloader before it could be restarted, so "dfu"
+// still works after field mode.
+static bool wdg_running;
+
+void hw_watchdog_start(void) {
+  if (wdg_running) return;
+  IWDG->KR = 0xCCCC;
+  IWDG->KR = 0x5555;
+  IWDG->PR = 6;                                               // LSI / 256
+  IWDG->RLR = 4095;
+  uint32_t t0 = millis();
+  while ((IWDG->SR & (IWDG_SR_PVU | IWDG_SR_RVU)) && millis() - t0 < 100) {}
+  IWDG->KR = 0xAAAA;
+  wdg_running = true;
+}
+
+void hw_watchdog_kick(void) { if (wdg_running) IWDG->KR = 0xAAAA; }
+bool hw_watchdog_running(void) { return wdg_running; }
+
 // ---------------------------------------------------------------- VDDA from VREFINT
 #define VREFINT_CAL (*(const volatile uint16_t *)0x1FF80078u)   // raw VREFINT at VDDA = 3.0 V, 25 C (DS10689, VREFINT_CAL)
 

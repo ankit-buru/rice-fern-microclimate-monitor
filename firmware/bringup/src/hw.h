@@ -41,6 +41,12 @@ void hw_uid(uint32_t uid[3]);
 unsigned hw_flash_kb(void);
 void hw_enter_bootloader(void); // reboot into the ST ROM DFU bootloader (as BOOT0 + RESET would)
 
+// ---- independent watchdog (LSI, DS10689 Table 49: 26-56 kHz): /256 and reload 4095 = 19-40 s without a kick.
+// Started for unattended operation only: once running it can't be stopped, except by a reset.
+void hw_watchdog_start(void);
+void hw_watchdog_kick(void);
+bool hw_watchdog_running(void);
+
 // ---- analog: VDDA (the +3V3 rail) from the internal reference
 unsigned hw_vdda_mv(void);
 
