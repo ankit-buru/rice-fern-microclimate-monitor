@@ -24,6 +24,7 @@ add_executable(bringup
   src/modem.c
   src/config.c
   src/report.c
+  src/store.c
   src/usb_descriptors.c
   src/syscalls.c
   ${TP}/cmsis-device-l0/Source/Templates/gcc/startup_stm32l072xx.s

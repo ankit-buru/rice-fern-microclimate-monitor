@@ -1,6 +1,7 @@
 // Low-level hardware: clocks, millisecond tick, GPIO helpers, reset cause, ROM bootloader, VDDA, LSE + RTC.
 #pragma once
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include "board.h"
 
@@ -47,11 +48,26 @@ void hw_watchdog_start(void);
 void hw_watchdog_kick(void);
 bool hw_watchdog_running(void);
 
-// ---- analog: VDDA (the +3V3 rail) from the internal reference
-unsigned hw_vdda_mv(void);
+// ---- device clock: the RTC on the LSE (LSI if Y1 won't start), counting seconds from its first start. It keeps
+// running through resets and reflashing (backup domain); a power cut (cell disconnected) restarts it from 0.
+bool hw_clock_init(void);       // idempotent; true = on the LSE
+bool hw_clock_fresh(void);      // the clock (re)started from 0 at this boot
+uint32_t hw_clock_s(void);      // device seconds
+uint32_t hw_clock_read(uint32_t *ms);   // device seconds, and ms into the current second
+uint32_t hw_bkp_read(unsigned i);       // RTC backup registers 0..4: survive resets, like the clock
+void hw_bkp_write(unsigned i, uint32_t v);
 
-// ---- LSE crystal Y1 and RTC
+// ---- Stop mode between field-mode events (~1 uA for the MCU: DS10689 Table 37 + RTC/LSE/IWDG, Table 41)
+void hw_stop_ms(uint32_t ms);   // Stop mode for ms (<= 30 s), floating inputs parked as analog; millis() advanced
+void hw_usb_clock_resume(void); // HSI48 back on after Stop
+
+// ---- analog: VDDA (the +3V3 rail) from the internal reference; the MCU's own temperature sensor
+unsigned hw_vdda_mv(void);
+int hw_mcu_temp_dc(void);       // 0.1 C (DS10689 Table 69: +-2 C linearity after the two-point cal); -9999 = no cal
+
+// ---- data EEPROM: word-aligned writes, unchanged words skipped; false if the read-back doesn't match
+bool hw_eeprom_write(uint32_t addr, const void *src, size_t n);
+
+// ---- LSE crystal Y1
 int  hw_lse_start(unsigned drive, uint32_t timeout_ms);   // drive 0 (low) .. 3 (high); returns start time in ms, -1 = failed
 bool hw_lse_ready(void);
-void hw_rtc_start(void);        // RTC on the LSE, time reset to 00:00:00
-uint32_t hw_rtc_seconds(void);  // seconds since hw_rtc_start (wraps at 24 h)

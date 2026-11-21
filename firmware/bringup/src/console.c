@@ -68,3 +68,23 @@ const char *console_readline(void) {
   }
   return NULL;
 }
+
+// Stop mode and USB: just dropping the D+ pull-up (tud_disconnect) left the peripheral in its suspend state with its
+// clock stopped, and the second reconnect after a sleep wasn't seen by the host. So shut it all down and start afresh.
+void console_usb_stop(void) {
+  if (!tud_inited()) return;
+  tud_deinit(0);                                                // interrupts off, D+ pull-up off, core powered down
+  NVIC_ClearPendingIRQ(USB_IRQn);
+  RCC->APB1ENR &= ~(RCC_APB1ENR_USBEN | RCC_APB1ENR_CRSEN);
+}
+
+void console_usb_start(void) {
+  if (tud_inited()) return;
+  hw_usb_clock_resume();                                        // HSI48 (stopped in Stop mode)
+  RCC->APB1RSTR |= RCC_APB1RSTR_USBRST | RCC_APB1RSTR_CRSRST;   // clean peripherals
+  RCC->APB1RSTR &= ~(RCC_APB1RSTR_USBRST | RCC_APB1RSTR_CRSRST);
+  RCC->APB1ENR |= RCC_APB1ENR_CRSEN | RCC_APB1ENR_USBEN;
+  CRS->CR |= CRS_CR_AUTOTRIMEN | CRS_CR_CEN;
+  tusb_rhport_init_t init = { .role = TUSB_ROLE_DEVICE, .speed = TUSB_SPEED_AUTO };
+  tusb_init(0, &init);                                          // pull-up on: the host sees a new attach
+}

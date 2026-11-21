@@ -9,9 +9,10 @@
 #include "modem.h"
 #include "config.h"
 #include "report.h"
+#include "store.h"
 #include "tusb.h"
 
-#define FW_VERSION "bringup 0.1"
+#define FW_VERSION "bringup 0.2 (logger-1)"
 
 void USB_IRQHandler(void) { tud_int_handler(0); }
 
@@ -77,13 +78,15 @@ static void cmd_lse(char *a) {
   else        cprintf("LSE ready after %d ms\n", ms);
 }
 
-static void cmd_rtc(char *a) {
-  if (!hw_lse_ready() && hw_lse_start(3, 5000) < 0) { cputs("LSE not running: see \"lse\"\n"); return; }
+static void cmd_rtc(char *a) {                                  // doesn't reset the clock: it timestamps the samples
   int secs = arg_int(a, 10);
-  hw_rtc_start();
-  uint32_t t0 = millis();
-  cprintf("RTC on LSE vs the HSI16 tick for %d s (HSI16 is only +-1 %%: this checks the RTC runs, not ppm)...\n", secs);
-  while (hw_rtc_seconds() < (uint32_t)secs) system_poll();
+  bool lse = hw_clock_init();
+  uint32_t ms0, s0 = hw_clock_read(&ms0);
+  while (hw_clock_read(&ms0) == s0) system_poll();              // start on a second boundary
+  uint32_t t0 = millis(), s1 = s0 + 1;
+  cprintf("device clock on the %s: %lu s since it started%s. Timing %d s against the HSI16 tick (only +-1 %%)...\n",
+          lse ? "LSE" : "LSI", (unsigned long)s1, hw_clock_fresh() ? " (restarted at this boot)" : "", secs);
+  while (hw_clock_s() < s1 + (uint32_t)secs) system_poll();
   cprintf("RTC counted %d s in %lu ms of HSI16 time\n", secs, millis() - t0);
 }
 
@@ -366,18 +369,63 @@ static void cmd_cfg(char *a) {
     strncpy(cfg.url, v, sizeof cfg.url - 1); cfg.url[sizeof cfg.url - 1] = 0; changed = true;
   } else if (a && v && !strcmp(a, "token")) {
     strncpy(cfg.token, strcmp(v, "-") ? v : "", sizeof cfg.token - 1); cfg.token[sizeof cfg.token - 1] = 0; changed = true;
-  } else if (a && v && !strcmp(a, "interval")) {
-    int s = atoi(v); if (s < 60) { cputs("interval: 60 s minimum\n"); return; }
-    cfg.interval_s = (uint32_t)s; changed = true;
-  } else if (a && *a) { cputs("cfg [url <http://host:port> | token <secret|-> | interval <s>]\n"); return; }
+  } else if (a && v && !strcmp(a, "sample")) {
+    int s = atoi(v); if (s < 60) { cputs("sample: 60 s minimum\n"); return; }
+    cfg.sample_s = (uint32_t)s; changed = true;
+  } else if (a && v && !strcmp(a, "batch")) {
+    int b = atoi(v); if (b < 1 || b > 96) { cputs("batch: 1 to 96 samples\n"); return; }
+    cfg.batch = (uint32_t)b; changed = true;
+  } else if (a && *a) { cputs("cfg [url <http://host:port> | token <secret|-> | sample <s> | batch <n>]\n"); return; }
   if (changed) cputs(config_save() ? "saved to EEPROM\n" : "EEPROM write FAILED (read-back mismatch)\n");
-  cprintf("server  %s\ntoken   %s\ninterval %lu s\n", cfg.url[0] ? cfg.url : "(not set)", cfg.token[0] ? "(set)" : "(none)", cfg.interval_s);
+  cprintf("server  %s\ntoken   %s\nsample  every %lu s\nupload  once %lu samples are waiting (every %lu s)\n",
+          cfg.url[0] ? cfg.url : "(not set)", cfg.token[0] ? "(set)" : "(none)", (unsigned long)cfg.sample_s,
+          (unsigned long)cfg.batch, (unsigned long)(cfg.sample_s * cfg.batch));
 }
 
-static void cmd_report(char *a) { report_cycle(arg_int(a, 1) != 0); }
+static void cmd_report(char *a) { report_now(arg_int(a, 1) != 0); }
+static void cmd_sample(char *a) { sample_take(); }
+
+static void cmd_log(char *a) {
+  if (a && !strcmp(a, "clear")) { store_clear(); cprintf("store cleared (epoch now %lu)\n", (unsigned long)store_epoch()); return; }
+  uint32_t newest = store_newest();
+  cprintf("records: newest %lu, server has up to %lu, %lu waiting, room for %u (epoch %lu). Device clock %lu s.\n",
+          (unsigned long)newest, (unsigned long)store_acked(), (unsigned long)store_unsent(), store_capacity(),
+          (unsigned long)store_epoch(), (unsigned long)hw_clock_s());
+  int n = arg_int(a, 8);
+  uint32_t q = newest > (uint32_t)n ? newest - (uint32_t)n + 1u : 1u;
+  for (; q && q <= newest; q++) {
+    rec_t r;
+    if (!store_get(q, &r)) { cprintf("  %6lu  (missing)\n", (unsigned long)q); continue; }
+    int t = r.mcu_dc;
+    cprintf("  %6lu  t %8lu  cell %4u mV  MCU %s%d.%d C  flags 0x%02X%s\n", (unsigned long)r.seq, (unsigned long)r.t,
+            r.vcell_mv, t < 0 ? "-" : "", (t < 0 ? -t : t) / 10, (t < 0 ? -t : t) % 10, r.flags,
+            r.seq <= store_acked() ? "" : "  (not sent)");
+  }
+}
+
 static void cmd_field(char *a) {
   if (!cfg.url[0]) { cputs("set the server first: cfg url http://host:port\n"); return; }
   field_mode();
+}
+
+static char wake_msg[112];                                       // cmd_sleep result, shown when a terminal next opens
+
+static void cmd_sleep(char *a) {                                // bench test of the field-mode Stop path
+  int secs = arg_int(a, 5);
+  if (secs < 1 || secs > 30) { cputs("sleep <1..30 s>\n"); return; }
+  if (hw_watchdog_running() && secs > 10) { cputs("the watchdog is running (field mode was used): 10 s max\n"); return; }
+  cprintf("Stop mode for %d s: USB disconnects and comes back (reopen the terminal)\n", secs);
+  delay_ms(100);
+  console_usb_stop();
+  bool lse = hw_clock_init();
+  uint32_t t0 = millis(), r0 = hw_clock_s();
+  hw_watchdog_kick();
+  hw_stop_ms((uint32_t)secs * 1000u);
+  uint32_t r1 = hw_clock_s();
+  console_usb_start();
+  snprintf(wake_msg, sizeof wake_msg, "last sleep %d s: millis advanced %lu ms, RTC %lu s, clock %s\n", secs,
+           (unsigned long)(millis() - t0), (unsigned long)(r1 - r0), lse ? "LSE" : "LSI (Y1 did not start)");
+  cputs("(printed again when a terminal opens)\n");            // the old terminal session is gone by now
 }
 
 static void cmd_dfu(char *a) {
@@ -396,7 +444,7 @@ static const struct { const char *name; void (*fn)(char *); const char *help; } 
   { "pins",     cmd_pins,     "every status input: modem lines, SIM detect, battery alert, GNSS flag" },
   { "led",      cmd_led,      "led on|off|blink  user LED D2" },
   { "lse",      cmd_lse,      "lse [drive 0-3]  start the 32.768 kHz crystal, time it" },
-  { "rtc",      cmd_rtc,      "rtc [seconds]  run the RTC on the LSE against the system tick" },
+  { "rtc",      cmd_rtc,      "rtc [seconds]  the device clock (RTC): source, count, timed against the system tick" },
   { "i2c",      cmd_i2c,      "i2c [1|2|3]  check the pull-ups and scan for devices" },
   { "fg",       cmd_fg,       "read the MAX17048 fuel gauge (cell voltage, state of charge)" },
   { "gnss",     cmd_gnss,     "gnss on|off  antenna feed (U10) and its over-current flag" },
@@ -405,9 +453,12 @@ static const struct { const char *name; void (*fn)(char *); const char *help; } 
                               "            mdm data [apn|off] | ping [host [count]] | dns [host]  data session, ping, DNS" },
   { "at",       cmd_at,       "at <command>  one AT command, e.g. \"at +CPIN?\" or \"at +CSQ\"" },
   { "bridge",   cmd_bridge,   "pass the console straight through to the modem UART (Ctrl-] exits)" },
-  { "cfg",      cmd_cfg,      "cfg [url <http://host:port> | token <s> | interval <s>]  server settings (EEPROM)" },
-  { "report",   cmd_report,   "report [0]  one check-in: modem on, register, POST, apply reply (0 = leave modem on)" },
-  { "field",    cmd_field,    "report every interval (also starts by itself ~15 s after boot with no USB host)" },
+  { "cfg",      cmd_cfg,      "cfg [url <http://host:port> | token <s> | sample <s> | batch <n>]  settings (EEPROM)" },
+  { "sample",   cmd_sample,   "take and store one sample now" },
+  { "log",      cmd_log,      "log [n | clear]  stored samples: the last n, or wipe them all" },
+  { "report",   cmd_report,   "report [0]  upload now: modem on, send every waiting sample, apply the reply (0 = leave modem on)" },
+  { "field",    cmd_field,    "sample and upload on schedule (also starts by itself ~15 s after boot with no USB host)" },
+  { "sleep",    cmd_sleep,    "[s]: Stop mode for s seconds (default 5), woken by the RTC (USB drops meanwhile)" },
   { "dfu",      cmd_dfu,      "reboot into the ROM USB bootloader for flashing" },
   { "reset",    cmd_reset,    "software reset" },
 };
@@ -433,6 +484,8 @@ int main(void) {
   tusb_rhport_init_t init = { .role = TUSB_ROLE_DEVICE, .speed = TUSB_SPEED_AUTO };
   tusb_init(0, &init);
   config_load();
+  hw_clock_init();                                               // the device clock carries on across resets
+  store_init();
 
   bool was_connected = false;
   bool field_checked = false;
@@ -446,6 +499,7 @@ int main(void) {
     if (c && !was_connected) {                                    // a terminal just opened the port
       delay_ms(50);
       cprintf("\nTreeWeather LTE board, %s. Reset cause: %s. Type \"help\".\n> ", FW_VERSION, hw_reset_cause());
+      if (wake_msg[0]) { cputs(wake_msg); cputs("> "); wake_msg[0] = 0; }
     }
     was_connected = c;
     const char *line = console_readline();

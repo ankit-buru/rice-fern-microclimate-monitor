@@ -10,3 +10,5 @@ void cwrite_raw(const char *buf, size_t n);                    // no newline tra
 int  console_getc(void);                                       // -1 if nothing waiting
 const char *console_readline(void);                            // non-blocking: a finished line, or NULL
 bool console_usb_connected(void);                              // a terminal has the CDC port open (DTR set)
+void console_usb_stop(void);                                    // before Stop mode: USB stack + peripheral fully off, D+ released
+void console_usb_start(void);                                   // after it: HSI48 back, peripheral reset, stack re-initialised

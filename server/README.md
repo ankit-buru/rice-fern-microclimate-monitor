@@ -16,7 +16,13 @@ Reports are stored under `data/` (git-ignored): `data/<board id>.jsonl`, one JSO
 server's receive time and the source IP.
 
 - `http://localhost:7070/`: every board and its latest report (refreshes every minute)
-- `http://localhost:7070/device/<id>`: one board's last 200 reports; add `.csv` to download all of them
+- `http://localhost:7070/device/<id>`: one board's last 200 uploads (status); add `.csv` to download all of them
+- `http://localhost:7070/device/<id>/samples`: its last 200 samples (logger firmware); `/samples.csv` for all of them
+
+Logger firmware sends its stored samples with each upload, up to 24 per POST; the reply's `ack` tells the board which
+it can forget. Duplicates (a resend after a dropped connection) are dropped by epoch + sequence number. A board's
+clock only counts seconds since its cell was connected, so the server converts: real time = receive time - (board
+clock in the POST - board clock in the sample). Samples land in `data/<board id>.samples.jsonl`.
 
 ## Send a board a command
 
@@ -24,10 +30,11 @@ Commands wait on the server and go out in the reply to the board's next report (
 powers its modem off between reports):
 
 ```bash
-python3 test_server.py queue <board id> interval_s=600
+python3 test_server.py queue <board id> sample_s=900 batch=4
 ```
 
-The bring-up firmware acts on `interval_s` (60 s minimum, saved to its EEPROM) and prints anything else it receives.
+Logger firmware acts on `sample_s` (seconds between samples, 60 minimum) and `batch` (upload once this many samples
+are waiting, 1-96), both saved to its EEPROM. Older bring-up firmware acted on `interval_s` instead.
 
 ## Point a board at it
 
@@ -39,8 +46,10 @@ cfg token <a-secret>
 report
 ```
 
-`report` does one check-in and powers the modem off afterwards. `field` reports every interval until a key is
-pressed. A board that boots with no USB host (on its battery) starts field mode by itself after about 15 s.
+`report` uploads everything waiting and powers the modem off afterwards. `sample` stores one sample, `log` lists
+them, `cfg sample <s>` / `cfg batch <n>` set the schedule. `field` runs the schedule (a sample every `sample_s`, an
+upload once `batch` are waiting, and one upload straight away). A board that boots with no USB host (on its battery)
+starts field mode by itself after about 15 s.
 
 ## Plot a board's battery
 

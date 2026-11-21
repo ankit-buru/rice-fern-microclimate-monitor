@@ -1,11 +1,19 @@
-// Reporting to the test server: one JSON status report per check-in, commands come back in the HTTP reply.
+// Uploads to the server (HTTP POST of status + stored samples; settings and acks come back in the reply), sampling,
+// and field mode: a sample every cfg.sample_s, an upload every cfg.batch samples.
 #pragma once
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 bool dns_check(const char *host);                                                 // print the DNS servers, resolve host
 int  http_post(const char *path, const char *body, char *reply, size_t replylen);   // HTTP status, or -1
-bool report_cycle(bool power_off_after);   // modem on, register, data, POST, apply the reply, (modem off)
-extern bool field_active;                 // LED pattern while field mode runs
-#define FIELD_MIN_MV 3300                  // no uploads below this cell voltage (DESIGN.md §4.7)
-void field_mode(void);                     // report every cfg.interval_s until a key is pressed or USB appears
+
+#define BATT_LOW_MV    3400                // flagged "low" below this (rest voltage)
+#define BATT_STOP_MV   3300                // one last upload, then none (DESIGN.md §4.7; the DW01A cuts off at ~2.5 V)
+#define BATT_RESUME_MV 3500                // uploads resume above this
+
+uint32_t sample_take(void);                // read and store one sample now; returns its number (0 = failed)
+bool upload_session(bool power_off_after, int batt);   // modem on, send everything waiting; batt 0 ok 1 low 2 last 3 locked
+bool report_now(bool power_off_after);     // console "report": upload_session with the battery state, no lockout
+extern bool field_active;                  // LED pattern while field mode runs
+void field_mode(void);                     // sample/upload forever (until USB appears, or a key with USB at the start)

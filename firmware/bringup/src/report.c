@@ -11,6 +11,7 @@
 #include "i2c.h"
 #include "modem.h"
 #include "report.h"
+#include "store.h"
 #include "tusb.h"
 
 static int at(const char *fmt, const char *arg, unsigned timeout_ms) {
@@ -45,7 +46,7 @@ int http_post(const char *path, const char *body, char *reply, size_t replylen) 
   char buf[64];
   reply[0] = 0;
   at("AT+SHCONF=\"URL\",\"%s\"", cfg.url, 2000);
-  modem_at("AT+SHCONF=\"BODYLEN\",1024", 1000, true);
+  modem_at("AT+SHCONF=\"BODYLEN\",4096", 1000, true);   // the most it takes (manual §13.2.1)
   modem_at("AT+SHCONF=\"HEADERLEN\",350", 1000, true);
   if (modem_at("AT+SHCONN", 30000, true) != 0) {
     char host[64]; url_host(host, sizeof host);
@@ -94,9 +95,7 @@ disc:
   return status;
 }
 
-// ---------------------------------------------------------------- one report
-static unsigned seq;
-
+// ---------------------------------------------------------------- modem and fuel-gauge readouts
 static int registration(void) {
   char cereg[48];
   modem_query("AT+CEREG?", "+CEREG:", cereg, sizeof cereg, 1000);
@@ -143,6 +142,15 @@ static void fg_stay_active(void) {
   }
 }
 
+static void fg_allow_hibernate(void) {                         // back to the default between check-ins (~20 uA less)
+  uint16_t h;
+  i2c_init(1);
+  if (i2c_read_reg16(1, MAX17048_ADDR, 0x0A, &h) == I2C_OK && h == 0x0000) {
+    const uint8_t w[3] = { 0x0A, 0x80, 0x30 };
+    i2c_xfer(1, MAX17048_ADDR, w, 3, NULL, 0);
+  }
+}
+
 // AT+CENG? serving cell (manual §5.2.30), quotes stripped: "earfcn,pci,rsrp,rssi,rsrq,sinr,tac,cellid,mcc,mnc,txpower"
 // txpower is in 0.1 dBm and only meaningful while the modem is transmitting.
 static void ceng_serving(char *out, size_t n, int *tx) {
@@ -164,32 +172,56 @@ static int json_int(const char *s, const char *key, int dflt) {
   return p ? atoi(p + strlen(k)) : dflt;
 }
 
-// Measured at the end of a cycle, after its report had gone: sent with the next one (-1 = none yet).
-static int prev_post_mv = -1, prev_off_mv = -1, prev_post_tx = -999;
-static long prev_cycle_ms = -1;
+// ---------------------------------------------------------------- one upload session
+// Modem on, register (90 s cap), then POSTs of up to REC_PER_POST stored records each, until the server has them all
+// (or MAX_POSTS). Each POST carries a status block too. The reply's "ack" is the last record the server saved.
+#define REG_TIMEOUT_MS 90000
+#define REC_PER_POST   24            // ~50 bytes each in JSON: a POST stays under ~2 KB
+#define MAX_POSTS      13            // a full ring (294 records) in one session
 
-bool report_cycle(bool power_off_after) {
+// Measured at the end of a session, after its last POST: sent with the next one (-1 = none yet).
+static int prev_post_mv = -1, prev_off_mv = -1;
+static long prev_cycle_ms = -1;
+static char body[2600];
+
+static const char *const batt_names[] = { "ok", "low", "last", "locked" };
+
+static int dc_str(char *out, size_t n, int dc) {             // 0.1 C as "-1.5" (no float printf)
+  if (dc == -9999) return snprintf(out, n, "null");
+  return snprintf(out, n, "%s%d.%d", dc < 0 ? "-" : "", (dc < 0 ? -dc : dc) / 10, (dc < 0 ? -dc : dc) % 10);
+}
+
+static void put_s(char *out, size_t n, int16_t v) { if (v == SENSOR_NONE) snprintf(out, n, "null"); else snprintf(out, n, "%d", v); }
+
+bool upload_session(bool power_off_after, int batt) {
   uint32_t t_start = millis();
   fg_stay_active();
   int pre_mv = cell_mv();                                       // at rest (or with the modem already on)
-  bool was_on = modem_status();
+  bool was_on = modem_status(), ok = false;
+  int post_mv = -1, posts = 0;
+  cprintf("upload: %lu record(s) waiting, battery %s\n", store_unsent(), batt_names[batt & 3]);
   if (!was_on) {
-    cputs("report: modem on\n");
-    if (modem_power_on() < 0 || !modem_sync(10)) { cputs("report: modem did not start\n"); modem_kill(); return false; }
+    cputs("upload: modem on\n");
+    if (modem_power_on() < 0 || !modem_sync(10)) { cputs("upload: modem did not start\n"); modem_kill(); goto done; }
     modem_at("ATE0", 1000, false); modem_at("AT+CMEE=2", 1000, false);
   }
   uint32_t on_ms = millis() - t_start;
-  cputs("report: waiting for registration (up to 180 s)\n");
+  {                                                             // no usable SIM: don't sit 90 s waiting to register
+    char cpin[32] = "";                                         // (asks the modem, so a bad SIM_DET switch can't block uploads)
+    uint32_t tc = millis();
+    do { modem_query("AT+CPIN?", "+CPIN:", cpin, sizeof cpin, 1000); if (strstr(cpin, "READY")) break; delay_ms(500); }
+    while (millis() - tc < 10000);
+    if (!strstr(cpin, "READY")) { cprintf("upload: SIM not ready (%s)\n", cpin[0] ? cpin : "no reply"); goto off; }
+  }
+  cprintf("upload: waiting for registration (up to %d s)\n", REG_TIMEOUT_MS / 1000);
   int reg = -1;
   uint32_t t0 = millis();
-  while (millis() - t0 < 180000) { reg = registration(); if (reg == 1 || reg == 5) break; delay_ms(200); }
+  while (millis() - t0 < REG_TIMEOUT_MS) { reg = registration(); if (reg == 1 || reg == 5) break; delay_ms(200); }
   uint32_t reg_ms = millis() - t0;
-  bool ok = false;
-  int post_mv = -1, post_tx = -999;
-  if (reg != 1 && reg != 5) { cprintf("report: not registered (CEREG %d)\n", reg); goto off; }
+  if (reg != 1 && reg != 5) { cprintf("upload: not registered after %lu s (CEREG %d)\n", reg_ms / 1000, reg); goto off; }
 
-  // measurements: everything in one JSON object (integers only: no printf float support needed)
-  int reg_mv = cell_mv();                                       // just registered: the attach signalling has just happened
+  // radio and identity readouts, once per session (integers only: no printf float support)
+  int reg_mv = cell_mv();
   char csq[48] = "", cpsi[160] = "", imei[32] = "", plmn[12] = "", ceng[64];
   int rssi_csq = 99, band = 0, rsrq = 0, rsrp = 0, rssi = 0, sinr = 0, reg_tx;
   uint32_t t1 = millis();                                       // right after registering CSQ can still be 99 and CPSI
@@ -199,92 +231,211 @@ bool report_cycle(bool power_off_after) {
     if (rssi_csq != 99) break;
     delay_ms(500);
   } while (millis() - t1 < 5000);
-  uint32_t meas_ms = millis() - t1;
   modem_query("AT+CPSI?", "+CPSI:", cpsi, sizeof cpsi, 2000);
   cpsi_fields(cpsi, plmn, sizeof plmn, &band, &rsrq, &rsrp, &rssi, &sinr);
   modem_at("AT+CENG=1", 1000, false);
   ceng_serving(ceng, sizeof ceng, &reg_tx);
   modem_query("AT+GSN", "8", imei, sizeof imei, 1000);       // IMEIs start with a digit; 86... for this module
-  i2c_init(1);
-  uint16_t vcell = 0, soc = 0, crate = 0;
-  bool fg = i2c_read_reg16(1, MAX17048_ADDR, 0x02, &vcell) == I2C_OK && i2c_read_reg16(1, MAX17048_ADDR, 0x04, &soc) == I2C_OK;
-  if (fg) i2c_read_reg16(1, MAX17048_ADDR, 0x16, &crate);
   uint32_t uid[3]; hw_uid(uid);
 
-  char body[900];
-  int n = snprintf(body, sizeof body,
-    "{\"id\":\"%08lX%08lX%08lX\",\"imei\":\"%s\",\"fw\":\"bringup-2\",\"seq\":%u,\"uptime_s\":%lu,\"reset\":\"%s\","
-    "\"usb\":%s,\"vdda_mv\":%u,\"fg\":%s,\"vcell_mv\":%lu,\"soc_pct_x100\":%u,\"alrt\":%d,\"sim\":%d,"
-    "\"csq\":%d,\"plmn\":\"%s\",\"band\":%d,\"rsrp\":%d,\"rsrq\":%d,\"rssi\":%d,\"sinr\":%d,\"reg_ms\":%lu,\"interval_s\":%lu,",
-    uid[0], uid[1], uid[2], imei, seq, millis() / 1000, hw_reset_cause(),
-    tud_mounted() ? "true" : "false", hw_vdda_mv(), fg ? "true" : "false",
-    fg ? (unsigned long)vcell * 78125u / 1000000u : 0ul, fg ? (unsigned)(soc * 100u / 256u) : 0u,
-    pin_read(BAT_ALRT) ? 0 : 1, pin_read(SIM_DET), rssi_csq, plmn, band, rsrp, rsrq, rssi, sinr, reg_ms, cfg.interval_s);
-  snprintf(body + n, sizeof body - (size_t)n,
-    "\"hibrt\":%d,\"crate_raw\":%d,\"pre_mv\":%d,\"reg_mv\":%d,\"on_ms\":%lu,\"meas_ms\":%lu,\"ceng\":\"%s\",\"reg_tx\":%d,"
-    "\"prev_post_mv\":%d,\"prev_post_tx\":%d,\"prev_off_mv\":%d,\"prev_cycle_ms\":%ld}",
-    hibrt_seen, (int16_t)crate, pre_mv, reg_mv, on_ms, meas_ms, ceng, reg_tx,
-    prev_post_mv, prev_post_tx, prev_off_mv, prev_cycle_ms);
-  cputs("report: "); cputs(body); cputs("\n");               // cputs: no 256-byte cprintf limit
+  char urc[48], st[48];
+  modem_query("AT+CNACT?", "+CNACT: 0,", st, sizeof st, 2000);        // "+CNACT: 0,<status>,<ip>": 1 = already active
+  bool was_active = !strncmp(st, "+CNACT: 0,1", 11);
+  if (!was_active) {
+    if (modem_query("AT+CNACT=0,1", "+APP PDP:", urc, sizeof urc, 5000) != 0) { cputs("upload: data session refused\n"); goto off; }
+    if (!urc[0] && modem_wait_line("+APP PDP:", urc, sizeof urc, 60000) < 0) { cputs("upload: no data session\n"); goto off; }
+    if (strstr(urc, "DEACTIVE")) { cputs("upload: data session refused by the network\n"); goto off; }
+  }
 
-  // data session, POST, reply
-  {
-    char urc[48], st[48];
-    modem_query("AT+CNACT?", "+CNACT: 0,", st, sizeof st, 2000);      // "+CNACT: 0,<status>,<ip>": 1 = already active
-    bool was_active = !strncmp(st, "+CNACT: 0,1", 11);
-    if (!was_active) {
-      if (modem_query("AT+CNACT=0,1", "+APP PDP:", urc, sizeof urc, 5000) != 0) { cputs("report: data session refused\n"); goto off; }
-      if (!urc[0] && modem_wait_line("+APP PDP:", urc, sizeof urc, 60000) < 0) { cputs("report: no data session\n"); goto off; }
-      if (strstr(urc, "DEACTIVE")) { cputs("report: data session refused by the network\n"); goto off; }
+  for (;;) {
+    uint16_t vcell = 0, soc = 0, crate = 0;
+    i2c_init(1);
+    bool fg = i2c_read_reg16(1, MAX17048_ADDR, 0x02, &vcell) == I2C_OK && i2c_read_reg16(1, MAX17048_ADDR, 0x04, &soc) == I2C_OK;
+    if (fg) i2c_read_reg16(1, MAX17048_ADDR, 0x16, &crate);
+    uint32_t ms, now = hw_clock_read(&ms);
+    int n = snprintf(body, sizeof body,
+      "{\"id\":\"%08lX%08lX%08lX\",\"imei\":\"%s\",\"fw\":\"logger-1\",\"ep\":%lu,\"now\":%lu,\"now_ms\":%lu,\"clk\":\"%s\","
+      "\"uptime_s\":%lu,\"reset\":\"%s\",\"usb\":%s,\"vdda_mv\":%u,\"vcell_mv\":%lu,\"soc_pct_x100\":%u,\"crate_raw\":%d,"
+      "\"batt\":\"%s\",\"backoff\":%u,\"sample_s\":%lu,\"batch\":%lu,\"newest\":%lu,\"acked\":%lu,\"cap\":%u,\"post\":%d,",
+      uid[0], uid[1], uid[2], imei, (unsigned long)store_epoch(), (unsigned long)now, (unsigned long)ms,
+      hw_clock_init() ? "LSE" : "LSI", millis() / 1000, hw_reset_cause(), tud_mounted() ? "true" : "false", hw_vdda_mv(),
+      fg ? (unsigned long)vcell * 78125u / 1000000u : 0ul, fg ? (unsigned)(soc * 100u / 256u) : 0u, (int16_t)crate,
+      batt_names[batt & 3], (unsigned)(hw_bkp_read(0) & 0xF), (unsigned long)cfg.sample_s, (unsigned long)cfg.batch,
+      (unsigned long)store_newest(), (unsigned long)store_acked(), store_capacity(), posts);
+    n += snprintf(body + n, sizeof body - (size_t)n,
+      "\"csq\":%d,\"plmn\":\"%s\",\"band\":%d,\"rsrp\":%d,\"rsrq\":%d,\"rssi\":%d,\"sinr\":%d,\"ceng\":\"%s\",\"reg_tx\":%d,"
+      "\"reg_ms\":%lu,\"on_ms\":%lu,\"pre_mv\":%d,\"reg_mv\":%d,\"prev_post_mv\":%d,\"prev_off_mv\":%d,\"prev_cycle_ms\":%ld,\"recs\":[",
+      rssi_csq, plmn, band, rsrp, rsrq, rssi, sinr, ceng, reg_tx, reg_ms, on_ms, pre_mv, reg_mv,
+      prev_post_mv, prev_off_mv, prev_cycle_ms);
+    uint32_t first = store_first_unsent(), last = 0;
+    int k = 0;
+    for (uint32_t q = first; q <= store_newest() && k < REC_PER_POST && (size_t)n + 80 < sizeof body; q++) {
+      rec_t r;
+      last = q;                                                 // a corrupt slot is skipped, and acked with the rest
+      if (!store_get(q, &r)) continue;
+      char tc[12], a[8], b[8], c[8];
+      dc_str(tc, sizeof tc, r.mcu_dc); put_s(a, sizeof a, r.s[0]); put_s(b, sizeof b, r.s[1]); put_s(c, sizeof c, r.s[2]);
+      n += snprintf(body + n, sizeof body - (size_t)n, "%s[%lu,%lu,%u,%s,%s,%s,%s,%u]", k ? "," : "",
+                    (unsigned long)r.seq, (unsigned long)r.t, r.vcell_mv, tc, a, b, c, r.flags);
+      k++;
     }
+    n += snprintf(body + n, sizeof body - (size_t)n, "]}");
+    if ((size_t)n >= sizeof body) { cputs("upload: body too long\n"); break; }
+    cprintf("upload: POST %d, records %lu-%lu (%d), %d bytes\n", posts + 1, (unsigned long)first, (unsigned long)last, k, n);
     char reply[512];
     int status = http_post("/report", body, reply, sizeof reply);
-    cprintf("report: HTTP %d, reply %s\n", status, reply[0] ? reply : "(empty)");
-    ok = status == 200;
-    seq++;
-    if (ok) {                                                   // commands from the server ride on the reply
-      int iv = json_int(reply, "interval_s", 0);
-      if (iv >= 60 && (uint32_t)iv != cfg.interval_s) { cfg.interval_s = (uint32_t)iv; config_save(); cprintf("report: interval now %d s\n", iv); }
-    }
-    post_mv = cell_mv();                                        // straight after the upload, data session still up
-    { char c[64]; ceng_serving(c, sizeof c, &post_tx); }
-    if (!was_active) modem_query("AT+CNACT=0,0", "+APP PDP:", urc, sizeof urc, 5000);   // leave it as we found it
+    cprintf("upload: HTTP %d, reply %s\n", status, reply[0] ? reply : "(empty)");
+    if (status != 200) break;
+    posts++;
+    ok = true;
+    int ack = json_int(reply, "ack", -1);
+    if (last && ack > 0) store_ack((uint32_t)ack < last ? (uint32_t)ack : last);
+    int v = json_int(reply, "sample_s", 0);                     // settings from the server ride on the reply
+    if (v >= 60 && (uint32_t)v != cfg.sample_s) { cfg.sample_s = (uint32_t)v; config_save(); cprintf("upload: sample_s now %d\n", v); }
+    v = json_int(reply, "batch", 0);
+    if (v >= 1 && v <= 96 && (uint32_t)v != cfg.batch) { cfg.batch = (uint32_t)v; config_save(); cprintf("upload: batch now %d\n", v); }
+    if (!store_unsent() || !last || ack < (int)last || posts >= MAX_POSTS) break;   // done, or the server isn't keeping up
   }
+  post_mv = cell_mv();                                          // straight after the last POST, data session still up
+  if (!was_active) modem_query("AT+CNACT=0,0", "+APP PDP:", urc, sizeof urc, 5000);   // leave it as we found it
 off:
   if (power_off_after && !was_on) {
-    if (modem_power_off() < 0) { cputs("report: modem would not power down, cutting the rail\n"); modem_kill(); }
+    if (modem_power_off() < 0) { cputs("upload: modem would not power down, cutting the rail\n"); modem_kill(); }
     delay_ms(1000);
     prev_off_mv = cell_mv();                                    // modem rail off again
   } else prev_off_mv = -1;
-  prev_post_mv = post_mv; prev_post_tx = post_tx;
+done:
+  fg_allow_hibernate();
+  prev_post_mv = post_mv;
   prev_cycle_ms = (long)(millis() - t_start);
-  cprintf("report: %s in %lu s (cell %d mV before, %d after the upload, %d with the modem off)\n", ok ? "done" : "FAILED",
-          (millis() - t_start) / 1000, pre_mv, post_mv, prev_off_mv);
+  cprintf("upload: %s, %d POST(s) in %lu s, %lu record(s) still waiting (cell %d mV before, %d after, %d modem off)\n",
+          ok ? "done" : "FAILED", posts, (millis() - t_start) / 1000, store_unsent(), pre_mv, post_mv, prev_off_mv);
   return ok;
 }
 
+// ---------------------------------------------------------------- sampling
+static bool reset_unsampled = true;                             // no sample yet since this MCU reset
+
+// Field-mode state that must survive a watchdog reset: RTC backup registers (cleared only by a power cut).
+// BKP0 = 0xF1E1 <<16 | locked-out (bit 8) | back-off level (bits 0-3);  BKP1 = device time of the next retry.
+#define FSTATE_MAGIC 0xF1E10000u
+static uint32_t fstate(void) { uint32_t v = hw_bkp_read(0); return (v & 0xFFFF0000u) == FSTATE_MAGIC ? v : FSTATE_MAGIC; }
+static unsigned backoff_level(void) { return fstate() & 0xFu; }
+static bool locked_out(void) { return fstate() & 0x100u; }
+static void fstate_set(unsigned level, bool locked) { hw_bkp_write(0, FSTATE_MAGIC | (locked ? 0x100u : 0) | (level & 0xFu)); }
+static uint32_t retry_at(void) { return (hw_bkp_read(0) & 0xFFFF0000u) == FSTATE_MAGIC ? hw_bkp_read(1) : 0; }
+
+uint32_t sample_take(void) {
+  rec_t r;
+  memset(&r, 0, sizeof r);
+  r.t = hw_clock_s();
+  int mv = cell_mv();
+  r.vcell_mv = mv > 0 ? (uint16_t)mv : 0;
+  r.mcu_dc = (int16_t)hw_mcu_temp_dc();
+  r.s[0] = r.s[1] = r.s[2] = SENSOR_NONE;                      // sensors: not chosen yet
+  if (reset_unsampled) r.flags |= REC_BOOT | (hw_clock_fresh() ? REC_CLOCK_NEW : 0);
+  if (mv > 0 && mv < BATT_LOW_MV) r.flags |= REC_BATT_LOW;
+  if (locked_out()) r.flags |= REC_LOCKED_OUT;
+  if (tud_mounted()) r.flags |= REC_USB;
+  uint32_t seq = store_append(&r);
+  if (seq) reset_unsampled = false;
+  char tc[12]; dc_str(tc, sizeof tc, r.mcu_dc);
+  if (seq) cprintf("sample %lu: t %lu s, cell %d mV, MCU %s C, flags 0x%02X (%lu waiting)\n", (unsigned long)seq,
+                   (unsigned long)r.t, mv, tc, r.flags, store_unsent());
+  else cputs("sample: EEPROM write FAILED\n");
+  return seq;
+}
+
+bool report_now(bool power_off_after) {                       // console "report": no lockout, no back-off
+  int mv = cell_mv();
+  return upload_session(power_off_after, mv < 0 ? 0 : mv < BATT_STOP_MV ? 2 : mv < BATT_LOW_MV ? 1 : 0);
+}
+
+// ---------------------------------------------------------------- field mode
 bool field_active;
 
+// An upload when enough samples wait, unless a failed one set a retry time. Low cell: below BATT_STOP_MV one last
+// upload (batt "last"), then none until the cell is back above BATT_RESUME_MV (a fresh or recharged cell).
+static void field_upload(void) {
+  static const uint32_t backoff_s[] = { 0, 3600, 7200, 14400 };
+  int mv = cell_mv();
+  bool locked = locked_out();
+  int batt = 0;
+  if (locked) {
+    if (mv >= 0 && mv < BATT_RESUME_MV) { cprintf("field: cell %d mV, uploads stay off until %d mV\n", mv, BATT_RESUME_MV); return; }
+    locked = false;
+    cprintf("field: cell %d mV: uploads back on\n", mv);
+  }
+  if (mv >= 0 && mv < BATT_STOP_MV) { locked = true; batt = 2; cprintf("field: cell %d mV: last upload, then none until %d mV\n", mv, BATT_RESUME_MV); }
+  else if (mv >= 0 && mv < BATT_LOW_MV) batt = 1;
+  fstate_set(backoff_level(), locked);
+  bool ok = upload_session(true, batt);
+  unsigned lvl = backoff_level();
+  if (ok) lvl = 0; else if (lvl < 3) lvl++;
+  fstate_set(lvl, locked);
+  hw_bkp_write(1, ok ? 0 : hw_clock_s() + backoff_s[lvl]);
+  if (!ok) cprintf("field: next upload attempt in %lu s\n", (unsigned long)backoff_s[lvl]);
+}
+
+static bool upload_due(uint32_t now) { return store_unsent() >= cfg.batch && now >= retry_at(); }
+
+// Stop mode until the device clock reaches t, in chunks of up to 10 s. The IWDG keeps running in Stop (DS10689
+// §3.4 note) and can time out after 19 s with a fast LSI, so each chunk ends with a kick. Each chunk opens with a
+// double flash of D2, made by sleeping with the LED on. USB stays off while asleep: see field_mode().
+static void sleep_until_clock(uint32_t t) {
+  console_usb_stop();
+  for (;;) {
+    uint32_t ms, now = hw_clock_read(&ms);
+    if (now >= t) break;
+    uint32_t left = (t - now) * 1000u - ms;
+    hw_watchdog_kick();
+    if (left > 10000) left = 10000;
+    if (left > 400) {
+      pin_write(LED_USER, 1); hw_stop_ms(30);
+      pin_write(LED_USER, 0); hw_stop_ms(170);
+      pin_write(LED_USER, 1); hw_stop_ms(30);
+      pin_write(LED_USER, 0); left -= 230;
+    }
+    hw_stop_ms(left);
+  }
+}
+
+// A sample every cfg.sample_s (on multiples of it in device time, so a reset doesn't shift the schedule), an upload
+// once cfg.batch samples are waiting, and one straight away at start-up so a deployment shows on the server at once
+// (not after a watchdog reset: a fault that keeps resetting mustn't drain the cell through the modem).
+// USB: on battery it's off except during uploads. A USB host seen during an upload ends field mode (the console
+// comes back); or press RESET with USB plugged in. Started from the console with USB present: no Stop mode, and
+// any key stops it.
 void field_mode(void) {
-  cprintf("field mode: a report every %lu s to %s, watchdog on, no uploads below %d mV.\n"
-          "Any key (or plugging USB in) stops it.\n", cfg.interval_s, cfg.url, FIELD_MIN_MV);
   bool usb_at_start = tud_mounted();
+  bool lse = hw_clock_init();
+  cprintf("field mode: a sample every %lu s, an upload once %lu are waiting, to %s. Clock on the %s%s, %lu record(s) "
+          "waiting.\n%s", (unsigned long)cfg.sample_s, (unsigned long)cfg.batch, cfg.url, lse ? "LSE" : "LSI",
+          hw_clock_fresh() ? " (restarted)" : "", store_unsent(),
+          usb_at_start ? "USB is present, so no Stop mode. Any key stops it.\n"
+                       : "Stop mode in between. USB comes on only for uploads: plug it in and press RESET for the console.\n");
   hw_watchdog_start();                                          // a hang now ends in a reset, then field mode again
   field_active = true;
+  bool upload_now = !(hw_reset_flags() & RCC_CSR_IWDGRSTF);
+  uint32_t next_sample = 0;
   for (;;) {
-    int mv = cell_mv();
-    if (mv >= 0 && mv < FIELD_MIN_MV && !tud_mounted())
-      cprintf("field: cell %d mV is below %d mV: skipping this upload\n", mv, FIELD_MIN_MV);
-    else
-      report_cycle(true);
-    uint32_t t0 = millis();
-    while (millis() - t0 < cfg.interval_s * 1000u) {
-      system_poll();
-      if (console_getc() >= 0 || (!usb_at_start && tud_mounted())) {
-        field_active = false;
-        cputs("field mode stopped (the watchdog keeps running until the next reset)\n");
-        return;
-      }
+    uint32_t now = hw_clock_s();
+    if (now >= next_sample) {
+      sample_take();
+      next_sample = (now / cfg.sample_s + 1u) * cfg.sample_s;
     }
+    if (upload_now || upload_due(now)) {
+      upload_now = false;
+      if (!usb_at_start) console_usb_start();
+      field_upload();
+      if (!usb_at_start && tud_mounted()) break;                // a USB host appeared during the upload
+    }
+    uint32_t wake = next_sample, r = retry_at();
+    if (store_unsent() >= cfg.batch && r > now && r < wake) wake = r;
+    if (!usb_at_start) { sleep_until_clock(wake); continue; }
+    while (hw_clock_s() < wake) { system_poll(); if (console_getc() >= 0) goto stop; }
   }
+stop:
+  field_active = false;
+  cputs("field mode stopped (the watchdog keeps running until the next reset)\n");
 }

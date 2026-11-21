@@ -2,7 +2,9 @@
 """TreeWeather test server: receives the boards' JSON reports and hands back queued commands.
 
 Python 3.8+ standard library only. Data lives in plain files under --data (default ./data):
-  <id>.jsonl          one JSON object per report, as received plus the server's "rx_time" and "rx_ip"
+  <id>.jsonl          one JSON object per POST (the board's status), as received minus "recs", plus the server's
+                      "rx_time", "rx_ip" and "n_recs"
+  <id>.samples.jsonl  one JSON object per stored sample (logger firmware), duplicates dropped, with its real time
   <id>.pending.json   commands waiting for the board's next check-in (written by "queue", cleared on delivery)
 
   python3 test_server.py serve [--port 7070] [--token SECRET] [--data DIR]
@@ -11,9 +13,16 @@ Python 3.8+ standard library only. Data lives in plain files under --data (defau
 
 HTTP:
   POST /report        board -> server. Header X-Token must match --token if one is set.
-                      Reply: {"ok": true, "server_time": <unix s>, ...queued commands...}
+                      Body: a status object; logger firmware adds "recs": [[seq, t, mv, mcu_c, s0, s1, s2, flags], ...],
+                      "ep" (store epoch), "now" + "now_ms" (the board's clock when it built the POST).
+                      Reply: {"ok": true, "server_time": <unix s>, "ack": <last seq saved>, ...queued commands...}
   GET  /              overview page: every board and its latest report
   GET  /device/<id>   the last 200 reports as a table;  /device/<id>.csv  all of them as CSV
+  GET  /device/<id>/samples   the last 200 samples;   /device/<id>/samples.csv  all of them as CSV
+
+Sample times: a board's clock counts seconds from when its cell was connected, never set to real time. The server
+converts: real time = receive time - (board clock in the POST - board clock in the sample). The error is the upload
+latency (seconds) plus the board's crystal drift (~2 s/day of backlog).
 """
 import argparse
 import csv
@@ -23,6 +32,7 @@ import json
 import os
 import re
 import sys
+import threading
 import time
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -30,8 +40,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 MAX_BODY = 8192
 ID_RE = re.compile(r"^[0-9A-Za-z_-]{1,48}$")
 # columns shown first on the pages (anything else the board sends follows)
-COLUMNS = ["rx_time", "seq", "uptime_s", "usb", "vcell_mv", "soc_pct_x100", "vdda_mv", "csq", "rsrp", "rsrq",
-           "sinr", "band", "plmn", "reg_ms", "interval_s", "reset", "rx_ip"]
+COLUMNS = ["rx_time", "fw", "n_recs", "first", "last", "newest", "acked", "post", "batt", "backoff", "vcell_mv",
+           "soc_pct_x100", "csq", "rsrp", "sinr", "band", "plmn", "reg_ms", "sample_s", "batch", "reset", "uptime_s",
+           "seq", "interval_s", "rx_ip"]
+SAMPLE_COLUMNS = ["seq", "time", "vcell_mv", "mcu_c", "s0", "s1", "s2", "flags", "t_dev", "ep", "unix", "rx_time"]
+SAMPLE_FLAGS = {1: "boot", 2: "clock-new", 4: "batt-low", 8: "locked-out", 16: "usb"}
 
 
 def now_iso():
@@ -41,6 +54,8 @@ def now_iso():
 class Store:
     def __init__(self, root):
         self.root = root
+        self.lock = threading.Lock()
+        self.seen = {}                      # board id -> {(epoch, seq)} already stored
         os.makedirs(root, exist_ok=True)
 
     def path(self, dev, suffix):
@@ -52,16 +67,40 @@ class Store:
         with open(self.path(dev, ".jsonl"), "a") as f:
             f.write(json.dumps(rec, separators=(",", ":")) + "\n")
 
-    def history(self, dev, last=None):
+    def history(self, dev, last=None, suffix=".jsonl"):
         try:
-            with open(self.path(dev, ".jsonl")) as f:
+            with open(self.path(dev, suffix)) as f:
                 rows = [json.loads(line) for line in f if line.strip()]
         except FileNotFoundError:
             return []
         return rows[-last:] if last else rows
 
+    def add_samples(self, dev, ep, dev_now, rx_unix, rx_iso, recs):
+        """Append the new ones (by epoch + seq); returns the highest seq in the batch, or None if it was empty."""
+        with self.lock:
+            seen = self.seen.get(dev)
+            if seen is None:
+                seen = {(r.get("ep"), r.get("seq")) for r in self.history(dev, suffix=".samples.jsonl")}
+                self.seen[dev] = seen
+            top = None
+            with open(self.path(dev, ".samples.jsonl"), "a") as f:
+                for r in recs:
+                    seq, t = int(r[0]), int(r[1])
+                    top = seq if top is None else max(top, seq)
+                    if (ep, seq) in seen:
+                        continue
+                    seen.add((ep, seq))
+                    unix = rx_unix - (dev_now - t)
+                    flags = int(r[7]) if len(r) > 7 else 0
+                    row = {"seq": seq, "time": datetime.fromtimestamp(round(unix), timezone.utc).astimezone().isoformat(timespec="seconds"),
+                           "vcell_mv": r[2], "mcu_c": r[3], "s0": r[4], "s1": r[5], "s2": r[6], "flags": flags,
+                           "flag_names": " ".join(n for b, n in SAMPLE_FLAGS.items() if flags & b),
+                           "t_dev": t, "ep": ep, "unix": round(unix, 1), "rx_time": rx_iso}
+                    f.write(json.dumps(row, separators=(",", ":")) + "\n")
+            return top
+
     def devices(self):
-        return sorted(n[:-6] for n in os.listdir(self.root) if n.endswith(".jsonl"))
+        return sorted(n[:-6] for n in os.listdir(self.root) if n.endswith(".jsonl") and not n.endswith(".samples.jsonl"))
 
     def take_pending(self, dev):
         p = self.path(dev, ".pending.json")
@@ -85,8 +124,8 @@ class Store:
         return cur
 
 
-def table(rows, link_ids=False):
-    keys = ["id"] + list(COLUMNS) if link_ids else list(COLUMNS)
+def table(rows, link_ids=False, columns=COLUMNS):
+    keys = ["id"] + list(columns) if link_ids else list(columns)
     for r in rows:
         keys += [k for k in r if k not in keys and k != "id"]
     keys = [k for k in keys if any(k in r for r in rows)]
@@ -98,6 +137,15 @@ def table(rows, link_ids=False):
             cells.append(f'<td><a href="/device/{v}">{v}</a></td>' if link_ids and k == "id" else f"<td>{v}</td>")
         out.append("<tr>" + "".join(cells) + "</tr>")
     return "\n".join(out) + "</table>"
+
+
+def to_csv(rows, first=()):
+    keys = list(dict.fromkeys(list(first) + [k for r in rows for k in r]))
+    buf = io.StringIO()
+    w = csv.DictWriter(buf, fieldnames=keys)
+    w.writeheader()
+    w.writerows(rows)
+    return buf.getvalue()
 
 
 PAGE = """<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -129,17 +177,26 @@ def make_handler(store, token):
             if n <= 0 or n > MAX_BODY:
                 return self.send(400, '{"ok":false,"error":"bad length"}')
             try:
+                rx_unix = time.time()
                 rec = json.loads(self.rfile.read(n))
                 dev = str(rec["id"])
+                recs = rec.pop("recs", None)
                 rec["rx_time"] = now_iso()
                 rec["rx_ip"] = self.client_address[0]
+                reply = {"ok": True, "server_time": int(rx_unix)}
+                if recs is not None:
+                    rec["n_recs"] = len(recs)
+                    if recs:
+                        rec["first"], rec["last"] = recs[0][0], recs[-1][0]
+                        dev_now = float(rec["now"]) + float(rec.get("now_ms", 0)) / 1000
+                        reply["ack"] = store.add_samples(dev, rec.get("ep", 0), dev_now, rx_unix, rec["rx_time"], recs)
                 store.append(dev, rec)
-                reply = {"ok": True, "server_time": int(time.time())}
                 cmds = store.take_pending(dev)
                 reply.update(cmds)
             except (ValueError, KeyError) as e:
                 return self.send(400, json.dumps({"ok": False, "error": str(e)}))
-            self.log_message("report from %s seq %s%s", dev, rec.get("seq"), f", delivered {cmds}" if cmds else "")
+            what = f"records {rec['first']}-{rec['last']}" if rec.get("n_recs") else f"seq {rec.get('seq')}"
+            self.log_message("report from %s, %s%s", dev, what, f", delivered {cmds}" if cmds else "")
             self.send(200, json.dumps(reply, separators=(",", ":")))
 
         def do_GET(self):
@@ -152,18 +209,23 @@ def make_handler(store, token):
                         rows.append({**h[-1], "id": dev})
                 body = ("<p>Latest report from each board (click an id for its history):</p>" + table(rows, link_ids=True)) if rows else "no reports yet"
                 return self.send(200, PAGE.format(title="TreeWeather boards", body=body), "text/html; charset=utf-8")
+            m = re.match(r"^/device/([0-9A-Za-z_-]+)/samples(\.csv)?$", path)
+            if m:
+                dev, as_csv = m.group(1), m.group(2)
+                rows = store.history(dev, None if as_csv else 200, suffix=".samples.jsonl")
+                if as_csv:
+                    return self.send(200, to_csv(rows, SAMPLE_COLUMNS), "text/csv")
+                body = (f'<p><a href="/">all boards</a> | <a href="/device/{dev}">uploads</a> | '
+                        f'<a href="/device/{dev}/samples.csv">CSV</a></p>' + (table(rows, columns=SAMPLE_COLUMNS) if rows else "no samples"))
+                return self.send(200, PAGE.format(title=f"Board {html.escape(dev)}: samples", body=body), "text/html; charset=utf-8")
             m = re.match(r"^/device/([0-9A-Za-z_-]+)(\.csv)?$", path)
             if m:
                 dev, as_csv = m.group(1), m.group(2)
                 rows = store.history(dev, None if as_csv else 200)
                 if as_csv:
-                    keys = list(dict.fromkeys(k for r in rows for k in r))
-                    buf = io.StringIO()
-                    w = csv.DictWriter(buf, fieldnames=keys)
-                    w.writeheader()
-                    w.writerows(rows)
-                    return self.send(200, buf.getvalue(), "text/csv")
-                body = f'<p><a href="/">all boards</a> | <a href="/device/{dev}.csv">CSV</a></p>' + (table(rows) if rows else "no reports")
+                    return self.send(200, to_csv(rows), "text/csv")
+                body = (f'<p><a href="/">all boards</a> | <a href="/device/{dev}.csv">CSV</a> | '
+                        f'<a href="/device/{dev}/samples">samples</a></p>' + (table(rows) if rows else "no reports"))
                 return self.send(200, PAGE.format(title=f"Board {html.escape(dev)}", body=body), "text/html; charset=utf-8")
             self.send(404, "not found", "text/plain")
 
