@@ -43,8 +43,51 @@ ID_RE = re.compile(r"^[0-9A-Za-z_-]{1,48}$")
 COLUMNS = ["rx_time", "fw", "n_recs", "first", "last", "newest", "acked", "post", "batt", "backoff", "vcell_mv",
            "soc_pct_x100", "csq", "rsrp", "sinr", "band", "plmn", "reg_ms", "sample_s", "batch", "reset", "uptime_s",
            "seq", "interval_s", "rx_ip"]
-SAMPLE_COLUMNS = ["seq", "time", "vcell_mv", "mcu_c", "s0", "s1", "s2", "flags", "t_dev", "ep", "unix", "rx_time"]
+SAMPLE_COLUMNS = ["seq", "time", "vcell_mv", "mcu_c", "temp_c", "rh_pct", "lux", "uva_uw_cm2", "uvb_uw_cm2",
+                  "uvc_uw_cm2", "flag_names", "sensors", "t_dev", "ep", "unix", "rx_time"]
 SAMPLE_FLAGS = {1: "boot", 2: "clock-new", 4: "batt-low", 8: "locked-out", 16: "usb"}
+SENSOR_BITS = {1: "aht20", 2: "veml7700", 4: "as7331", 8: "uv-shade-ovf", 16: "uv-sun-ovf", 32: "aht-crc"}
+
+# Record layout 2 (fw logger-2, "rv": 2): [seq, t, mv, mcu_c, flags, sensors, aht_t (0.01 C), aht_rh (0.01 %),
+#   als_shade, white_shade, als_sun, white_sun, uva_shade, uvb_shade, uvc_shade, uva_sun, uvb_sun, uvc_sun, as_temp]
+# VEML7700 lux/count = 0.0036 * (800 / IT_ms) * (2 / gain) (Adafruit_VEML7700): shade gain 2, 100 ms; sun 1/8, 25 ms.
+# AS7331 uW/cm2 = counts * FSR / (gain * ms * 1024) (SparkFun_AS7331), FSR A/B/C 348160/387072/169984:
+#   shade gain 256, 64 ms; sun gain 16, 64 ms. Chip temperature C = raw * 0.05 - 66.9.
+VEML_LUX = (0.0036 * 8 * 1, 0.0036 * 32 * 16)
+UV_FSR = (348160, 387072, 169984)
+UV_SCALE = (1 / (256 * 64 * 1024), 1 / (16 * 64 * 1024))
+SAT = 60000                                      # counts: treat as saturated (16-bit full scale 65535)
+
+
+def names(bits, table):
+    return " ".join(n for b, n in table.items() if bits & b)
+
+
+def decode_record(r):
+    """One record array from a board -> a row of real units (raw counts kept too). Layout 1 (logger-1) has 8 fields."""
+    row = {"seq": int(r[0]), "vcell_mv": r[2], "mcu_c": r[3]}
+    if len(r) == 8:                              # logger-1: [seq, t, mv, mcu_c, s0, s1, s2, flags]
+        row.update({"flags": int(r[7]), "flag_names": names(int(r[7]), SAMPLE_FLAGS)})
+        return row
+    (_, _, _, _, flags, sens, aht_t, aht_rh, als0, wh0, als1, wh1, a0, b0, c0, a1, b1, c1, as_t) = r[:19]
+    row.update({"flags": flags, "flag_names": names(flags, SAMPLE_FLAGS), "sensors": names(sens, SENSOR_BITS)})
+    if sens & 1:
+        row.update({"temp_c": aht_t / 100, "rh_pct": aht_rh / 100})
+    if sens & 2:
+        shade_ok = als0 < SAT
+        row["lux"] = round(als0 * VEML_LUX[0], 3) if shade_ok else round(als1 * VEML_LUX[1], 1)
+        row["lux_from"] = "shade" if shade_ok else "sun"
+        row.update({"als_shade": als0, "white_shade": wh0, "als_sun": als1, "white_sun": wh1})
+    if sens & 4:
+        shade = (a0, b0, c0)
+        use_shade = not (sens & 8) and max(shade) < SAT
+        counts, scale = (shade, UV_SCALE[0]) if use_shade else ((a1, b1, c1), UV_SCALE[1])
+        for name, n, fsr in zip(("uva", "uvb", "uvc"), counts, UV_FSR):
+            row[f"{name}_uw_cm2"] = round(n * fsr * scale, 4)
+        row["uv_from"] = "shade" if use_shade else "sun"
+        row.update({"uva_shade": a0, "uvb_shade": b0, "uvc_shade": c0, "uva_sun": a1, "uvb_sun": b1, "uvc_sun": c1,
+                    "as7331_c": round(as_t * 0.05 - 66.9, 2)})
+    return row
 
 
 def now_iso():
@@ -91,11 +134,9 @@ class Store:
                         continue
                     seen.add((ep, seq))
                     unix = rx_unix - (dev_now - t)
-                    flags = int(r[7]) if len(r) > 7 else 0
-                    row = {"seq": seq, "time": datetime.fromtimestamp(round(unix), timezone.utc).astimezone().isoformat(timespec="seconds"),
-                           "vcell_mv": r[2], "mcu_c": r[3], "s0": r[4], "s1": r[5], "s2": r[6], "flags": flags,
-                           "flag_names": " ".join(n for b, n in SAMPLE_FLAGS.items() if flags & b),
-                           "t_dev": t, "ep": ep, "unix": round(unix, 1), "rx_time": rx_iso}
+                    row = decode_record(r)
+                    row.update({"time": datetime.fromtimestamp(round(unix), timezone.utc).astimezone().isoformat(timespec="seconds"),
+                                "t_dev": t, "ep": ep, "unix": round(unix, 1), "rx_time": rx_iso})
                     f.write(json.dumps(row, separators=(",", ":")) + "\n")
             return top
 

@@ -11,6 +11,7 @@
 #include "i2c.h"
 #include "modem.h"
 #include "report.h"
+#include "sensors.h"
 #include "store.h"
 #include "tusb.h"
 
@@ -176,13 +177,13 @@ static int json_int(const char *s, const char *key, int dflt) {
 // Modem on, register (90 s cap), then POSTs of up to REC_PER_POST stored records each, until the server has them all
 // (or MAX_POSTS). Each POST carries a status block too. The reply's "ack" is the last record the server saved.
 #define REG_TIMEOUT_MS 90000
-#define REC_PER_POST   24            // ~50 bytes each in JSON: a POST stays under ~2 KB
-#define MAX_POSTS      13            // a full ring (294 records) in one session
+#define REC_PER_POST   16            // ~110 bytes each in JSON: a POST stays under ~3 KB (BODYLEN max 4096)
+#define MAX_POSTS      9             // a full ring (133 records) in one session
 
 // Measured at the end of a session, after its last POST: sent with the next one (-1 = none yet).
 static int prev_post_mv = -1, prev_off_mv = -1;
 static long prev_cycle_ms = -1;
-static char body[2600];
+static char body[3400];
 
 static const char *const batt_names[] = { "ok", "low", "last", "locked" };
 
@@ -191,7 +192,6 @@ static int dc_str(char *out, size_t n, int dc) {             // 0.1 C as "-1.5" 
   return snprintf(out, n, "%s%d.%d", dc < 0 ? "-" : "", (dc < 0 ? -dc : dc) / 10, (dc < 0 ? -dc : dc) % 10);
 }
 
-static void put_s(char *out, size_t n, int16_t v) { if (v == SENSOR_NONE) snprintf(out, n, "null"); else snprintf(out, n, "%d", v); }
 
 bool upload_session(bool power_off_after, int batt) {
   uint32_t t_start = millis();
@@ -254,7 +254,7 @@ bool upload_session(bool power_off_after, int batt) {
     if (fg) i2c_read_reg16(1, MAX17048_ADDR, 0x16, &crate);
     uint32_t ms, now = hw_clock_read(&ms);
     int n = snprintf(body, sizeof body,
-      "{\"id\":\"%08lX%08lX%08lX\",\"imei\":\"%s\",\"fw\":\"logger-1\",\"ep\":%lu,\"now\":%lu,\"now_ms\":%lu,\"clk\":\"%s\","
+      "{\"id\":\"%08lX%08lX%08lX\",\"imei\":\"%s\",\"fw\":\"logger-2\",\"rv\":2,\"ep\":%lu,\"now\":%lu,\"now_ms\":%lu,\"clk\":\"%s\","
       "\"uptime_s\":%lu,\"reset\":\"%s\",\"usb\":%s,\"vdda_mv\":%u,\"vcell_mv\":%lu,\"soc_pct_x100\":%u,\"crate_raw\":%d,"
       "\"batt\":\"%s\",\"backoff\":%u,\"sample_s\":%lu,\"batch\":%lu,\"newest\":%lu,\"acked\":%lu,\"cap\":%u,\"post\":%d,",
       uid[0], uid[1], uid[2], imei, (unsigned long)store_epoch(), (unsigned long)now, (unsigned long)ms,
@@ -269,14 +269,17 @@ bool upload_session(bool power_off_after, int batt) {
       prev_post_mv, prev_off_mv, prev_cycle_ms);
     uint32_t first = store_first_unsent(), last = 0;
     int k = 0;
-    for (uint32_t q = first; q <= store_newest() && k < REC_PER_POST && (size_t)n + 80 < sizeof body; q++) {
+    for (uint32_t q = first; q <= store_newest() && k < REC_PER_POST && (size_t)n + 160 < sizeof body; q++) {
       rec_t r;
       last = q;                                                 // a corrupt slot is skipped, and acked with the rest
       if (!store_get(q, &r)) continue;
-      char tc[12], a[8], b[8], c[8];
-      dc_str(tc, sizeof tc, r.mcu_dc); put_s(a, sizeof a, r.s[0]); put_s(b, sizeof b, r.s[1]); put_s(c, sizeof c, r.s[2]);
-      n += snprintf(body + n, sizeof body - (size_t)n, "%s[%lu,%lu,%u,%s,%s,%s,%s,%u]", k ? "," : "",
-                    (unsigned long)r.seq, (unsigned long)r.t, r.vcell_mv, tc, a, b, c, r.flags);
+      char tc[12];
+      dc_str(tc, sizeof tc, r.mcu_dc);
+      const sensors_t *v = &r.s;                                // record layout 2: see the server's RECORD_V2
+      n += snprintf(body + n, sizeof body - (size_t)n, "%s[%lu,%lu,%u,%s,%u,%u,%d,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u]",
+                    k ? "," : "", (unsigned long)r.seq, (unsigned long)r.t, r.vcell_mv, tc, r.flags, v->status,
+                    v->aht_t, v->aht_rh, v->als[0], v->white[0], v->als[1], v->white[1],
+                    v->uv[0][0], v->uv[0][1], v->uv[0][2], v->uv[1][0], v->uv[1][1], v->uv[1][2], v->as_temp);
       k++;
     }
     n += snprintf(body + n, sizeof body - (size_t)n, "]}");
@@ -332,7 +335,7 @@ uint32_t sample_take(void) {
   int mv = cell_mv();
   r.vcell_mv = mv > 0 ? (uint16_t)mv : 0;
   r.mcu_dc = (int16_t)hw_mcu_temp_dc();
-  r.s[0] = r.s[1] = r.s[2] = SENSOR_NONE;                      // sensors: not chosen yet
+  sensors_read(&r.s);
   if (reset_unsampled) r.flags |= REC_BOOT | (hw_clock_fresh() ? REC_CLOCK_NEW : 0);
   if (mv > 0 && mv < BATT_LOW_MV) r.flags |= REC_BATT_LOW;
   if (locked_out()) r.flags |= REC_LOCKED_OUT;
@@ -342,6 +345,7 @@ uint32_t sample_take(void) {
   char tc[12]; dc_str(tc, sizeof tc, r.mcu_dc);
   if (seq) cprintf("sample %lu: t %lu s, cell %d mV, MCU %s C, flags 0x%02X (%lu waiting)\n", (unsigned long)seq,
                    (unsigned long)r.t, mv, tc, r.flags, store_unsent());
+  if (seq) sensors_print(&r.s);
   else cputs("sample: EEPROM write FAILED\n");
   return seq;
 }
@@ -354,10 +358,19 @@ bool report_now(bool power_off_after) {                       // console "report
 // ---------------------------------------------------------------- field mode
 bool field_active;
 
+// After a failed upload, wait 1, 2, then 4 upload periods (sample_s * batch) before trying again: hourly uploads
+// back off to 1, 2, 4 h; a fast test schedule retries in minutes. Never more than BACKOFF_MAX_S, unless one
+// period is longer than that.
+#define BACKOFF_MAX_S 14400u
+static uint32_t backoff_s(unsigned lvl) {
+  uint32_t period = cfg.sample_s * cfg.batch, w = lvl ? period << (lvl - 1) : 0;
+  uint32_t cap = period > BACKOFF_MAX_S ? period : BACKOFF_MAX_S;
+  return w > cap ? cap : w;
+}
+
 // An upload when enough samples wait, unless a failed one set a retry time. Low cell: below BATT_STOP_MV one last
 // upload (batt "last"), then none until the cell is back above BATT_RESUME_MV (a fresh or recharged cell).
 static void field_upload(void) {
-  static const uint32_t backoff_s[] = { 0, 3600, 7200, 14400 };
   int mv = cell_mv();
   bool locked = locked_out();
   int batt = 0;
@@ -373,8 +386,9 @@ static void field_upload(void) {
   unsigned lvl = backoff_level();
   if (ok) lvl = 0; else if (lvl < 3) lvl++;
   fstate_set(lvl, locked);
-  hw_bkp_write(1, ok ? 0 : hw_clock_s() + backoff_s[lvl]);
-  if (!ok) cprintf("field: next upload attempt in %lu s\n", (unsigned long)backoff_s[lvl]);
+  uint32_t wait = ok ? 0 : backoff_s(lvl);
+  hw_bkp_write(1, ok ? 0 : hw_clock_s() + wait);
+  if (!ok) cprintf("field: next upload attempt in %lu s\n", (unsigned long)wait);
 }
 
 static bool upload_due(uint32_t now) { return store_unsent() >= cfg.batch && now >= retry_at(); }

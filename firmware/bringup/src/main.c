@@ -9,10 +9,11 @@
 #include "modem.h"
 #include "config.h"
 #include "report.h"
+#include "sensors.h"
 #include "store.h"
 #include "tusb.h"
 
-#define FW_VERSION "bringup 0.2 (logger-1)"
+#define FW_VERSION "bringup 0.3 (logger-2)"
 
 void USB_IRQHandler(void) { tud_int_handler(0); }
 
@@ -103,7 +104,11 @@ static void cmd_i2c(char *a) {
     i2c_init(b);
     int found = 0;
     for (int addr = 0x08; addr < 0x78; addr++)
-      if (i2c_probe(b, (uint8_t)addr)) { cprintf("  device at 0x%02X%s\n", addr, addr == MAX17048_ADDR && b == 1 ? " (MAX17048)" : ""); found++; }
+      if (i2c_probe(b, (uint8_t)addr)) {
+        const char *what = addr == MAX17048_ADDR && b == 1 ? " (MAX17048 fuel gauge)" : addr == 0x38 ? " (AHT20?)"
+                         : addr == 0x10 ? " (VEML7700?)" : addr >= 0x74 && addr <= 0x77 ? " (AS7331?)" : "";
+        cprintf("  device at 0x%02X%s\n", addr, what); found++;
+      }
     if (!found) cputs("  no devices\n");
   }
 }
@@ -384,6 +389,7 @@ static void cmd_cfg(char *a) {
 
 static void cmd_report(char *a) { report_now(arg_int(a, 1) != 0); }
 static void cmd_sample(char *a) { sample_take(); }
+static void cmd_sens(char *a) { sensors_t v; sensors_read(&v); sensors_print(&v); }
 
 static void cmd_log(char *a) {
   if (a && !strcmp(a, "clear")) { store_clear(); cprintf("store cleared (epoch now %lu)\n", (unsigned long)store_epoch()); return; }
@@ -397,8 +403,8 @@ static void cmd_log(char *a) {
     rec_t r;
     if (!store_get(q, &r)) { cprintf("  %6lu  (missing)\n", (unsigned long)q); continue; }
     int t = r.mcu_dc;
-    cprintf("  %6lu  t %8lu  cell %4u mV  MCU %s%d.%d C  flags 0x%02X%s\n", (unsigned long)r.seq, (unsigned long)r.t,
-            r.vcell_mv, t < 0 ? "-" : "", (t < 0 ? -t : t) / 10, (t < 0 ? -t : t) % 10, r.flags,
+    cprintf("  %6lu  t %8lu  cell %4u mV  MCU %s%d.%d C  flags 0x%02X  sensors 0x%02X%s\n", (unsigned long)r.seq,
+            (unsigned long)r.t, r.vcell_mv, t < 0 ? "-" : "", (t < 0 ? -t : t) / 10, (t < 0 ? -t : t) % 10, r.flags, r.s.status,
             r.seq <= store_acked() ? "" : "  (not sent)");
   }
 }
@@ -454,6 +460,7 @@ static const struct { const char *name; void (*fn)(char *); const char *help; } 
   { "at",       cmd_at,       "at <command>  one AT command, e.g. \"at +CPIN?\" or \"at +CSQ\"" },
   { "bridge",   cmd_bridge,   "pass the console straight through to the modem UART (Ctrl-] exits)" },
   { "cfg",      cmd_cfg,      "cfg [url <http://host:port> | token <s> | sample <s> | batch <n>]  settings (EEPROM)" },
+  { "sens",     cmd_sens,     "read the Qwiic sensors once (AHT20, VEML7700, AS7331; either bus), without storing" },
   { "sample",   cmd_sample,   "take and store one sample now" },
   { "log",      cmd_log,      "log [n | clear]  stored samples: the last n, or wipe them all" },
   { "report",   cmd_report,   "report [0]  upload now: modem on, send every waiting sample, apply the reply (0 = leave modem on)" },

@@ -24,6 +24,11 @@ it can forget. Duplicates (a resend after a dropped connection) are dropped by e
 clock only counts seconds since its cell was connected, so the server converts: real time = receive time - (board
 clock in the POST - board clock in the sample). Samples land in `data/<board id>.samples.jsonl`.
 
+Logger-2 records carry the Qwiic sensors as raw counts; the server adds real units: `temp_c` / `rh_pct` (AHT20),
+`lux` (VEML7700), `uva_uw_cm2` / `uvb_uw_cm2` / `uvc_uw_cm2` (AS7331). Light and UV are measured twice per sample,
+at a sensitive "shade" setting and a wide-range "sun" setting; `lux_from` / `uv_from` say which one was used (the
+shade one unless it saturated). The raw counts for both are kept in the CSV (`als_shade`, `uva_sun`, ...).
+
 ## Send a board a command
 
 Commands wait on the server and go out in the reply to the board's next report (the board only connects out, and

@@ -6,10 +6,10 @@
 // Data EEPROM map (6 KB, 0x08080000-0x080817FF):  0x000 settings (config_t, <= 128 B) | 0x080 header | 0x100 records
 #define HDR_ADDR    (DATA_EEPROM_BASE + 0x80u)
 #define REC_ADDR    (DATA_EEPROM_BASE + 0x100u)
-#define STORE_CAP   ((DATA_EEPROM_BANK2_END + 1u - REC_ADDR) / sizeof(rec_t))   // 294 records: ~3 days at 15 min
+#define STORE_CAP   ((DATA_EEPROM_BANK2_END + 1u - REC_ADDR) / sizeof(rec_t))   // 133 records: ~33 h at 15 min
 #define STORE_MAGIC (0x53540000u | (sizeof(rec_t) << 8) | 1u)   // "ST", record size, layout 1
 
-_Static_assert(sizeof(rec_t) == 20, "rec_t layout");
+_Static_assert(sizeof(rec_t) == 44, "rec_t layout");
 _Static_assert(sizeof(config_t) <= 0x80, "config_t would overlap the store header");
 
 typedef struct { uint32_t magic, acked, epoch, spare; } hdr_t;   // acked: rewritten once per upload (100k cycles: decades)
@@ -40,7 +40,7 @@ void store_clear(void) {
   }
   hdr_t old; memcpy(&old, (const void *)HDR_ADDR, sizeof old);
   hdr.magic = STORE_MAGIC; hdr.acked = 0; hdr.spare = 0;
-  hdr.epoch = (old.magic == STORE_MAGIC ? old.epoch : hw_clock_s()) + 1u;
+  hdr.epoch = ((old.magic & 0xFFFF0000u) == 0x53540000u ? old.epoch : hw_clock_s()) + 1u;   // any layout: new epoch
   hw_eeprom_write(HDR_ADDR, &hdr, sizeof hdr);
   newest = 0;
 }

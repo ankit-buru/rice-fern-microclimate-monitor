@@ -1,21 +1,22 @@
 // Sample records kept in the data EEPROM until the server confirms it has them (DESIGN.md §8, F04).
-// A ring of fixed 20-byte slots after the settings; record <seq> always lives in slot (seq - 1) % STORE_CAP, so the
+// A ring of fixed 44-byte slots after the settings; record <seq> always lives in slot (seq - 1) % STORE_CAP, so the
 // newest record is found by scanning once at boot and nothing else needs a write per sample. When the ring is full
 // the oldest record is overwritten (the server sees the gap in the numbers).
 #pragma once
 #include <stdbool.h>
 #include <stdint.h>
 
-#define SENSOR_NONE INT16_MIN      // an empty sensor slot
+#include "sensors.h"
 
 typedef struct {
   uint32_t seq;                    // 1, 2, 3 ... (0 = empty slot)
   uint32_t t;                      // device clock (hw_clock_s) when sampled
   uint16_t vcell_mv;               // cell voltage, 0 = no fuel gauge
   int16_t  mcu_dc;                 // MCU temperature, 0.1 C
-  int16_t  s[3];                   // sensor readings (scaling defined with the sensors), SENSOR_NONE = none
+  sensors_t s;                     // Qwiic sensors, raw (sensors.h); s.status says which answered
   uint8_t  flags;                  // REC_*
-  uint8_t  crc;                    // CRC-8 of the 19 bytes before it: a record cut short by a reset reads as empty
+  uint8_t  pad[2];
+  uint8_t  crc;                    // CRC-8 of the bytes before it: a record cut short by a reset reads as empty
 } rec_t;
 
 enum {
