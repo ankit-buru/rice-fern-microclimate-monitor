@@ -369,17 +369,12 @@ static uint32_t backoff_s(unsigned lvl) {
 }
 
 // An upload when enough samples wait, unless a failed one set a retry time. Low cell: below BATT_STOP_MV one last
-// upload (batt "last"), then none until the cell is back above BATT_RESUME_MV (a fresh or recharged cell).
+// upload (batt "last"), whether or not it works, then field_mode() parks the board (park()).
 static void field_upload(void) {
   int mv = cell_mv();
-  bool locked = locked_out();
+  bool locked = false;
   int batt = 0;
-  if (locked) {
-    if (mv >= 0 && mv < BATT_RESUME_MV) { cprintf("field: cell %d mV, uploads stay off until %d mV\n", mv, BATT_RESUME_MV); return; }
-    locked = false;
-    cprintf("field: cell %d mV: uploads back on\n", mv);
-  }
-  if (mv >= 0 && mv < BATT_STOP_MV) { locked = true; batt = 2; cprintf("field: cell %d mV: last upload, then none until %d mV\n", mv, BATT_RESUME_MV); }
+  if (mv >= 0 && mv < BATT_STOP_MV) { locked = true; batt = 2; cprintf("field: cell %d mV: last upload, then parked\n", mv); }
   else if (mv >= 0 && mv < BATT_LOW_MV) batt = 1;
   fstate_set(backoff_level(), locked);
   bool ok = upload_session(true, batt);
@@ -392,6 +387,21 @@ static void field_upload(void) {
 }
 
 static bool upload_due(uint32_t now) { return store_unsent() >= cfg.batch && now >= retry_at(); }
+
+// Flat cell: stop everything for good, to keep the cell above the level that damages it (the DW01A only cuts off at
+// ~2.5 V). No sampling, no modem, USB off; Stop mode, waking every 10 s only because the IWDG can't be stopped, with
+// a 10 ms flash of D2 once a minute so a parked board can be told from a dead one. The sensors are powered down
+// between readings and the fuel gauge hibernates on its own at zero load (HIBRT default). Only a reset or a power cut
+// (a recharged or new cell) gets out of it; after a reset the lock stays until the cell reads BATT_RESUME_MV.
+__attribute__((noreturn)) static void park(void) {
+  cprintf("field: parked (cell flat). Recharge or replace the cell, or press RESET with USB for the console.\n");
+  console_usb_stop();
+  for (unsigned n = 0;; n++) {
+    hw_watchdog_kick();
+    if (n % 6 == 0) { pin_write(LED_USER, 1); hw_stop_ms(10); pin_write(LED_USER, 0); }
+    hw_stop_ms(10000);
+  }
+}
 
 // Stop mode until the device clock reaches t, in chunks of up to 10 s. The IWDG keeps running in Stop (DS10689
 // §3.4 note) and can time out after 19 s with a fast LSI, so each chunk ends with a kick. Each chunk opens with a
@@ -430,6 +440,15 @@ void field_mode(void) {
                        : "Stop mode in between. USB comes on only for uploads: plug it in and press RESET for the console.\n");
   hw_watchdog_start();                                          // a hang now ends in a reset, then field mode again
   field_active = true;
+  if (locked_out()) {                                           // parked before this reset
+    int mv = cell_mv();
+    if (mv >= 0 && mv < BATT_RESUME_MV) {
+      if (usb_at_start) { cprintf("field: cell %d mV, still parked until %d mV\n", mv, BATT_RESUME_MV); goto stop; }
+      park();
+    }
+    fstate_set(0, false);
+    cprintf("field: cell %d mV: no longer parked\n", mv);
+  }
   bool upload_now = !(hw_reset_flags() & RCC_CSR_IWDGRSTF);
   uint32_t next_sample = 0;
   for (;;) {
@@ -437,12 +456,18 @@ void field_mode(void) {
     if (now >= next_sample) {
       sample_take();
       next_sample = (now / cfg.sample_s + 1u) * cfg.sample_s;
+      int mv = cell_mv();
+      if (mv >= 0 && mv < BATT_STOP_MV) upload_now = true;      // the last upload now, not at the next batch
     }
     if (upload_now || upload_due(now)) {
       upload_now = false;
       if (!usb_at_start) console_usb_start();
       field_upload();
       if (!usb_at_start && tud_mounted()) break;                // a USB host appeared during the upload
+      if (locked_out()) {
+        if (usb_at_start) { cputs("field: cell flat, field mode stopped\n"); break; }
+        park();
+      }
     }
     uint32_t wake = next_sample, r = retry_at();
     if (store_unsent() >= cfg.batch && r > now && r < wake) wake = r;
