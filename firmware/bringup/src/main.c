@@ -380,8 +380,15 @@ static void cmd_cfg(char *a) {
   } else if (a && v && !strcmp(a, "batch")) {
     int b = atoi(v); if (b < 1 || b > 96) { cputs("batch: 1 to 96 samples\n"); return; }
     cfg.batch = (uint32_t)b; changed = true;
-  } else if (a && *a) { cputs("cfg [url <http://host:port> | token <secret|-> | sample <s> | batch <n>]\n"); return; }
+  } else if (a && v && !strcmp(a, "name")) {
+    if (!strcmp(v, "-")) *v = 0;
+    if (strlen(v) >= sizeof cfg.name || v[strspn(v, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_")]) {
+      cprintf("name: up to %u of A-Z a-z 0-9 - _ (or - for none)\n", (unsigned)sizeof cfg.name - 1); return;
+    }
+    strcpy(cfg.name, v); changed = true;
+  } else if (a && *a) { cputs("cfg [url <http://host:port> | token <secret|-> | name <label|-> | sample <s> | batch <n>]\n"); return; }
   if (changed) cputs(config_save() ? "saved to EEPROM\n" : "EEPROM write FAILED (read-back mismatch)\n");
+  cprintf("name    %s\n", cfg.name[0] ? cfg.name : "(none)");
   cprintf("server  %s\ntoken   %s\nsample  every %lu s\nupload  once %lu samples are waiting (every %lu s)\n",
           cfg.url[0] ? cfg.url : "(not set)", cfg.token[0] ? "(set)" : "(none)", (unsigned long)cfg.sample_s,
           (unsigned long)cfg.batch, (unsigned long)(cfg.sample_s * cfg.batch));
@@ -440,6 +447,28 @@ static void cmd_dfu(char *a) {
   hw_enter_bootloader();
 }
 
+// Back to the state of a newly built board: settings, stored samples, clock and field-mode state all gone. The new
+// epoch is random (not old + 1, which is erased too), so the server can't mistake new samples for ones it holds.
+static void cmd_factory(char *a) {
+  if (!a || strcmp(a, "yes")) {
+    cprintf("factory yes  erases EVERYTHING: settings (server, token, name, schedule), all %lu stored samples (%lu not "
+            "uploaded), the device clock; then reboots\n", (unsigned long)(store_newest() < store_capacity() ? store_newest() : store_capacity()),
+            (unsigned long)store_unsent());
+    return;
+  }
+  uint32_t u[3]; hw_uid(u);
+  uint32_t h = u[0] ^ u[1] * 0x9E3779B1u ^ u[2] * 0x85EBCA77u;  // mixed with things that differ at every run:
+  uint32_t x[] = { millis(), SysTick->VAL, RTC->SSR, RTC->TR, (uint32_t)hw_mcu_temp_dc(), hw_vdda_mv() };   // per reset
+  for (unsigned i = 0; i < sizeof x / sizeof x[0]; i++) { h ^= x[i]; h *= 0x01000193u; h ^= h >> 15; }
+  if (!h) h = 1;
+  cputs("erasing the data EEPROM (a few seconds)...\n");
+  store_factory(h);
+  RCC->CSR |= RCC_CSR_RTCRST; RCC->CSR &= ~RCC_CSR_RTCRST;      // backup domain: the clock and field-mode registers
+  cprintf("done: epoch %lu. Rebooting; then set cfg url / token / name.\n", (unsigned long)h);
+  delay_ms(300);
+  NVIC_SystemReset();
+}
+
 static void cmd_reset(char *a) { cputs("resetting\n"); delay_ms(200); NVIC_SystemReset(); }
 
 static const struct { const char *name; void (*fn)(char *); const char *help; } cmds[] = {
@@ -459,7 +488,7 @@ static const struct { const char *name; void (*fn)(char *); const char *help; } 
                               "            mdm data [apn|off] | ping [host [count]] | dns [host]  data session, ping, DNS" },
   { "at",       cmd_at,       "at <command>  one AT command, e.g. \"at +CPIN?\" or \"at +CSQ\"" },
   { "bridge",   cmd_bridge,   "pass the console straight through to the modem UART (Ctrl-] exits)" },
-  { "cfg",      cmd_cfg,      "cfg [url <http://host:port> | token <s> | sample <s> | batch <n>]  settings (EEPROM)" },
+  { "cfg",      cmd_cfg,      "cfg [url <url> | token <s> | name <label> | sample <s> | batch <n>]  settings (EEPROM)" },
   { "sens",     cmd_sens,     "read the Qwiic sensors once (AHT20, VEML7700, AS7331; either bus), without storing" },
   { "sample",   cmd_sample,   "take and store one sample now" },
   { "log",      cmd_log,      "log [n | clear]  stored samples: the last n, or wipe them all" },
@@ -467,6 +496,7 @@ static const struct { const char *name; void (*fn)(char *); const char *help; } 
   { "field",    cmd_field,    "sample and upload on schedule (also starts by itself ~15 s after boot with no USB host)" },
   { "sleep",    cmd_sleep,    "[s]: Stop mode for s seconds (default 5), woken by the RTC (USB drops meanwhile)" },
   { "dfu",      cmd_dfu,      "reboot into the ROM USB bootloader for flashing" },
+  { "factory",  cmd_factory,  "factory yes  erase settings, samples and clock: as new (random new epoch), then reboot" },
   { "reset",    cmd_reset,    "software reset" },
 };
 

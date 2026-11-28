@@ -28,6 +28,12 @@ layout 3, in each sample); `log` on the console shows it, and `log clear` starts
 times each sample from the latest upload in its own (epoch, run), so samples left unsent at a cell swap keep their
 real times; a run that never got an upload through leaves its samples with an empty `time` and `time-unknown`.
 
+Starting a board over completely: on its console, `factory yes` erases its settings (server, token, name, schedule),
+every stored sample and its clock, picks a random new epoch and reboots; set `cfg url`, `cfg token` and `cfg name`
+again. On the server, `python3 test_server.py archive <board-id>` moves that board's files to
+`data/archive/<id>-<time>/` (works while the server runs), so its pages start empty. `cfg name <label>` sets a label
+that shows in the `name` column; the board's key on the server is always its MCU unique ID.
+
 Logger-2 records carry the Qwiic sensors as raw counts; the server adds real units: `temp_c` / `rh_pct` (AHT20),
 `lux` (VEML7700), `uva_uw_cm2` / `uvb_uw_cm2` / `uvc_uw_cm2` (AS7331). Light and UV are measured twice per sample,
 at a sensitive "shade" setting and a wide-range "sun" setting; `lux_from` / `uv_from` say which one was used (the

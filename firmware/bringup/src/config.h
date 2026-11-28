@@ -10,6 +10,8 @@ typedef struct {
   char     token[32];      // sent as the X-Token header; empty = none
   uint32_t sample_s;       // seconds between samples (default 900)
   uint32_t batch;          // upload once this many samples are waiting (default 4: hourly at 900 s)
+  char     name[16];       // label set by the user (cfg name), sent with every upload; the server's key stays the
+                           // MCU's unique ID. Letters, digits, - and _ only (no JSON escaping needed). Empty = none.
 } config_t;
 
 extern config_t cfg;

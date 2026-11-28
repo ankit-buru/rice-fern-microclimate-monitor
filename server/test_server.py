@@ -10,6 +10,8 @@ Python 3.8+ standard library only. Data lives in plain files under --data (defau
   python3 test_server.py serve [--port 7070] [--token SECRET] [--data DIR]
   python3 test_server.py queue <board-id> interval_s=600 [key=value ...]
   python3 test_server.py show [<board-id>]
+  python3 test_server.py archive <board-id>   move the board's files to data/archive/<id>-<time>/ (the server, even
+                      while running, then treats it as a new board; pair with "factory yes" on the board)
 
 HTTP:
   POST /report        board -> server. Header X-Token must match --token if one is set.
@@ -44,7 +46,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 MAX_BODY = 8192
 ID_RE = re.compile(r"^[0-9A-Za-z_-]{1,48}$")
 # columns shown first on the pages (anything else the board sends follows)
-COLUMNS = ["rx_time", "fw", "n_recs", "first", "last", "newest", "acked", "post", "batt", "backoff", "vcell_mv",
+COLUMNS = ["name", "rx_time", "fw", "n_recs", "first", "last", "newest", "acked", "post", "batt", "backoff", "vcell_mv",
            "soc_pct_x100", "csq", "rsrp", "sinr", "band", "plmn", "reg_ms", "sample_s", "batch", "reset", "uptime_s",
            "seq", "interval_s", "rx_ip"]
 SAMPLE_COLUMNS = ["seq", "time", "vcell_mv", "mcu_c", "temp_c", "rh_pct", "lux", "uva_uw_cm2", "uvb_uw_cm2",
@@ -127,7 +129,7 @@ class Store:
     def clock_offsets(self, dev):
         """(epoch, run & 0xFF) -> offset from the latest upload in that clock run (rebuilt from <id>.jsonl)."""
         clk = self.clk.get(dev)
-        if clk is None:
+        if clk is None or not os.path.exists(self.path(dev, ".jsonl")):   # (no file: never seen, or archived)
             clk = {(r.get("ep"), r["run"] & 0xFF): r["clk_off"] for r in self.history(dev)
                    if "clk_off" in r and r.get("run") is not None}
             self.clk[dev] = clk
@@ -141,7 +143,7 @@ class Store:
         """Append the new ones (by epoch + seq); returns the highest seq in the batch, or None if it was empty."""
         with self.lock:
             seen = self.seen.get(dev)
-            if seen is None:
+            if seen is None or not os.path.exists(self.path(dev, ".samples.jsonl")):   # archived: start afresh
                 seen = {(r.get("ep"), r.get("seq")) for r in self.history(dev, suffix=".samples.jsonl")}
                 self.seen[dev] = seen
             clk = self.clock_offsets(dev)
@@ -171,6 +173,18 @@ class Store:
 
     def devices(self):
         return sorted(n[:-6] for n in os.listdir(self.root) if n.endswith(".jsonl") and not n.endswith(".samples.jsonl"))
+
+    def archive(self, dev):
+        """Move every file of this board into archive/<id>-<local time>/; returns that folder, or None if none."""
+        files = [self.path(dev, s) for s in (".jsonl", ".samples.jsonl", ".pending.json")]
+        files = [f for f in files if os.path.exists(f)]
+        if not files:
+            return None
+        dest = os.path.join(self.root, "archive", dev + "-" + datetime.now().strftime("%Y%m%d-%H%M%S"))
+        os.makedirs(dest)
+        for f in files:
+            os.rename(f, os.path.join(dest, os.path.basename(f)))
+        return dest
 
     def take_pending(self, dev):
         p = self.path(dev, ".pending.json")
@@ -254,16 +268,19 @@ def make_handler(store, token):
                 rec["rx_time"] = now_iso()
                 rec["rx_ip"] = self.client_address[0]
                 reply = {"ok": True, "server_time": int(rx_unix)}
-                if "now" in rec and rec.get("run") is not None:   # rv 3: this upload times its clock run
+                timed = "now" in rec and rec.get("run") is not None   # rv 3: this upload times its clock run
+                if timed:
                     rec["clk_off"] = round(rx_unix - (float(rec["now"]) + float(rec.get("now_ms", 0)) / 1000), 1)
-                    store.note_clock(dev, rec.get("ep", 0), int(rec["run"]), rec["clk_off"])
                 if recs is not None:
                     rec["n_recs"] = len(recs)
                     if recs:
                         rec["first"], rec["last"] = recs[0][0], recs[-1][0]
-                        dev_now = float(rec["now"]) + float(rec.get("now_ms", 0)) / 1000
-                        reply["ack"] = store.add_samples(dev, rec.get("ep", 0), dev_now, rx_unix, rec["rx_time"], recs)
-                store.append(dev, rec)
+                store.append(dev, rec)                   # first: the caches treat a missing <id>.jsonl as "archived"
+                if timed:
+                    store.note_clock(dev, rec.get("ep", 0), int(rec["run"]), rec["clk_off"])
+                if recs:
+                    dev_now = float(rec["now"]) + float(rec.get("now_ms", 0)) / 1000
+                    reply["ack"] = store.add_samples(dev, rec.get("ep", 0), dev_now, rx_unix, rec["rx_time"], recs)
                 cmds = store.take_pending(dev)
                 reply.update(cmds)
             except (ValueError, KeyError) as e:
@@ -323,6 +340,8 @@ def main():
     q = sub.add_parser("queue")
     q.add_argument("id")
     q.add_argument("assignments", nargs="+", help="key=value, e.g. interval_s=600")
+    ar = sub.add_parser("archive", help="move a board's data to data/archive/ so it starts afresh")
+    ar.add_argument("id")
     sh = sub.add_parser("show")
     sh.add_argument("id", nargs="?")
     a = ap.parse_args()
@@ -337,6 +356,9 @@ def main():
             httpd.serve_forever()
         except KeyboardInterrupt:
             pass
+    elif a.cmd == "archive":
+        dest = store.archive(a.id)
+        print(f"archived {a.id} to {dest}" if dest else f"no data for {a.id}")
     elif a.cmd == "queue":
         cmds = {}
         for kv in a.assignments:

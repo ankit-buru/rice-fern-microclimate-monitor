@@ -15,7 +15,7 @@ void config_load(void) {
   }
   if (!cfg.sample_s) cfg.sample_s = 900;                        // fields added after layout 1 read as 0 on older boards
   if (!cfg.batch) cfg.batch = 4;
-  cfg.url[sizeof cfg.url - 1] = 0; cfg.token[sizeof cfg.token - 1] = 0;
+  cfg.url[sizeof cfg.url - 1] = 0; cfg.token[sizeof cfg.token - 1] = 0; cfg.name[sizeof cfg.name - 1] = 0;
   if (cfg.sample_s < 60) cfg.sample_s = 60;
   if (cfg.batch > 96) cfg.batch = 96;
 }

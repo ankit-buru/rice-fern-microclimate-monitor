@@ -254,10 +254,10 @@ bool upload_session(bool power_off_after, int batt) {
     if (fg) i2c_read_reg16(1, MAX17048_ADDR, 0x16, &crate);
     uint32_t ms, now = hw_clock_read(&ms);
     int n = snprintf(body, sizeof body,
-      "{\"id\":\"%08lX%08lX%08lX\",\"imei\":\"%s\",\"fw\":\"logger-2\",\"rv\":3,\"ep\":%lu,\"run\":%lu,\"now\":%lu,\"now_ms\":%lu,\"clk\":\"%s\","
+      "{\"id\":\"%08lX%08lX%08lX\",\"imei\":\"%s\",\"name\":\"%s\",\"fw\":\"logger-2\",\"rv\":3,\"ep\":%lu,\"run\":%lu,\"now\":%lu,\"now_ms\":%lu,\"clk\":\"%s\","
       "\"uptime_s\":%lu,\"reset\":\"%s\",\"usb\":%s,\"vdda_mv\":%u,\"vcell_mv\":%lu,\"soc_pct_x100\":%u,\"crate_raw\":%d,"
       "\"batt\":\"%s\",\"backoff\":%u,\"sample_s\":%lu,\"batch\":%lu,\"newest\":%lu,\"acked\":%lu,\"cap\":%u,\"post\":%d,",
-      uid[0], uid[1], uid[2], imei, (unsigned long)store_epoch(), (unsigned long)store_run(), (unsigned long)now, (unsigned long)ms,
+      uid[0], uid[1], uid[2], imei, cfg.name, (unsigned long)store_epoch(), (unsigned long)store_run(), (unsigned long)now, (unsigned long)ms,
       hw_clock_init() ? "LSE" : "LSI", millis() / 1000, hw_reset_cause(), tud_mounted() ? "true" : "false", hw_vdda_mv(),
       fg ? (unsigned long)vcell * 78125u / 1000000u : 0ul, fg ? (unsigned)(soc * 100u / 256u) : 0u, (int16_t)crate,
       batt_names[batt & 3], (unsigned)(hw_bkp_read(0) & 0xF), (unsigned long)cfg.sample_s, (unsigned long)cfg.batch,

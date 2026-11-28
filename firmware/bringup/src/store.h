@@ -41,3 +41,5 @@ uint32_t store_run(void);          // clock run: +1 each time the device clock r
                                    // wipe. The server times a record from an upload made in the same (epoch, run).
 unsigned store_capacity(void);
 void     store_clear(void);
+void     store_factory(uint32_t epoch);   // zero the whole data EEPROM (settings too), then an empty store with this
+                                          // epoch and clock run 0 (the clock restart at the next boot makes it 1)

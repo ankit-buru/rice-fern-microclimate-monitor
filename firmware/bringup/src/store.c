@@ -46,6 +46,15 @@ void store_clear(void) {
   newest = 0;
 }
 
+void store_factory(uint32_t epoch) {
+  uint32_t zero = 0;
+  for (uint32_t a = DATA_EEPROM_BASE; a < DATA_EEPROM_BANK2_END + 1u; a += 4)   // only non-zero words: a few s
+    if (*(volatile uint32_t *)a) hw_eeprom_write(a, &zero, 4);
+  hdr.magic = STORE_MAGIC; hdr.acked = 0; hdr.epoch = epoch; hdr.run = 0;
+  hw_eeprom_write(HDR_ADDR, &hdr, sizeof hdr);
+  newest = 0;
+}
+
 void store_init(void) {
   memcpy(&hdr, (const void *)HDR_ADDR, sizeof hdr);
   if (hdr.magic != STORE_MAGIC) { store_clear(); return; }
