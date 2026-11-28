@@ -46,7 +46,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 MAX_BODY = 8192
 ID_RE = re.compile(r"^[0-9A-Za-z_-]{1,48}$")
 # columns shown first on the pages (anything else the board sends follows)
-COLUMNS = ["name", "rx_time", "fw", "n_recs", "first", "last", "newest", "acked", "post", "batt", "backoff", "vcell_mv",
+COLUMNS = ["name", "rx_time", "fw", "git", "n_recs", "first", "last", "newest", "acked", "post", "batt", "backoff", "vcell_mv",
            "soc_pct_x100", "csq", "rsrp", "sinr", "band", "plmn", "reg_ms", "sample_s", "batch", "reset", "uptime_s",
            "seq", "interval_s", "rx_ip"]
 SAMPLE_COLUMNS = ["seq", "time", "vcell_mv", "mcu_c", "temp_c", "rh_pct", "lux", "uva_uw_cm2", "uvb_uw_cm2",

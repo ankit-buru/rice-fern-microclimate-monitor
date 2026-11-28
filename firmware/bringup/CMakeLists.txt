@@ -38,8 +38,14 @@ add_executable(bringup
   ${TUSB}/portable/st/stm32_fsdev/fsdev_common.c
 )
 set_target_properties(bringup PROPERTIES SUFFIX ".elf")
+# build/gitver.h: GIT_VERSION, the commit this was built from (cmake/gitver.cmake), refreshed at every build
+add_custom_target(gitver ALL
+  COMMAND ${CMAKE_COMMAND} -DSRC=${CMAKE_CURRENT_LIST_DIR} -DOUT=${CMAKE_BINARY_DIR}/gitver.h -P ${CMAKE_CURRENT_LIST_DIR}/cmake/gitver.cmake
+  BYPRODUCTS ${CMAKE_BINARY_DIR}/gitver.h)
+add_dependencies(bringup gitver)
 target_include_directories(bringup PRIVATE
   src
+  ${CMAKE_BINARY_DIR}
   ${TP}/cmsis-device-l0/Include
   ${TP}/CMSIS_5/CMSIS/Core/Include
   ${TUSB}

@@ -13,7 +13,8 @@
 #include "store.h"
 #include "tusb.h"
 
-#define FW_VERSION "bringup 0.3 (logger-2)"
+#include "gitver.h"                                             // GIT_VERSION, from the build (cmake/gitver.cmake)
+#define FW_VERSION "bringup 0.4 (logger-2), git " GIT_VERSION
 
 void USB_IRQHandler(void) { tud_int_handler(0); }
 
