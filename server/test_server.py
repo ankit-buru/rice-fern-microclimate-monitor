@@ -22,7 +22,11 @@ HTTP:
 
 Sample times: a board's clock counts seconds from when its cell was connected, never set to real time. The server
 converts: real time = receive time - (board clock in the POST - board clock in the sample). The error is the upload
-latency (seconds) plus the board's crystal drift (~2 s/day of backlog).
+latency (seconds) plus the board's crystal drift (~2 s/day of backlog). A power cut restarts the clock from 0 and
+starts a new clock run ("run", firmware rv 3); each record carries the run it was taken in, and is timed with the
+offset (receive time - board clock) of the latest upload made in that same (epoch, run), so records left unsent at a
+cell swap keep their real times. A record from a run that never got an upload through has no time ("time" empty,
+flag "time-unknown"). Records without a run (rv 2) are timed with the current upload, as before.
 """
 import argparse
 import csv
@@ -44,12 +48,13 @@ COLUMNS = ["rx_time", "fw", "n_recs", "first", "last", "newest", "acked", "post"
            "soc_pct_x100", "csq", "rsrp", "sinr", "band", "plmn", "reg_ms", "sample_s", "batch", "reset", "uptime_s",
            "seq", "interval_s", "rx_ip"]
 SAMPLE_COLUMNS = ["seq", "time", "vcell_mv", "mcu_c", "temp_c", "rh_pct", "lux", "uva_uw_cm2", "uvb_uw_cm2",
-                  "uvc_uw_cm2", "flag_names", "sensors", "t_dev", "ep", "unix", "rx_time"]
+                  "uvc_uw_cm2", "flag_names", "sensors", "t_dev", "ep", "run", "unix", "rx_time"]
 SAMPLE_FLAGS = {1: "boot", 2: "clock-new", 4: "batt-low", 8: "locked-out", 16: "usb"}
 SENSOR_BITS = {1: "aht20", 2: "veml7700", 4: "as7331", 8: "uv-shade-ovf", 16: "uv-sun-ovf", 32: "aht-crc"}
 
 # Record layout 2 (fw logger-2, "rv": 2): [seq, t, mv, mcu_c, flags, sensors, aht_t (0.01 C), aht_rh (0.01 %),
 #   als_shade, white_shade, als_sun, white_sun, uva_shade, uvb_shade, uvc_shade, uva_sun, uvb_sun, uvc_sun, as_temp]
+# Layout 3 ("rv": 3) adds a 20th field: the clock run (low 8 bits of the POST's "run") the sample was taken in.
 # VEML7700 lux/count = 0.0036 * (800 / IT_ms) * (2 / gain) (Adafruit_VEML7700): shade gain 2, 100 ms; sun 1/8, 25 ms.
 # AS7331 uW/cm2 = counts * FSR / (gain * ms * 1024) (SparkFun_AS7331), FSR A/B/C 348160/387072/169984:
 #   shade gain 256, 64 ms; sun gain 16, 64 ms. Chip temperature C = raw * 0.05 - 66.9.
@@ -99,6 +104,7 @@ class Store:
         self.root = root
         self.lock = threading.Lock()
         self.seen = {}                      # board id -> {(epoch, seq)} already stored
+        self.clk = {}                       # board id -> {(epoch, run & 0xFF): real time - board clock}, latest upload
         os.makedirs(root, exist_ok=True)
 
     def path(self, dev, suffix):
@@ -118,6 +124,19 @@ class Store:
             return []
         return rows[-last:] if last else rows
 
+    def clock_offsets(self, dev):
+        """(epoch, run & 0xFF) -> offset from the latest upload in that clock run (rebuilt from <id>.jsonl)."""
+        clk = self.clk.get(dev)
+        if clk is None:
+            clk = {(r.get("ep"), r["run"] & 0xFF): r["clk_off"] for r in self.history(dev)
+                   if "clk_off" in r and r.get("run") is not None}
+            self.clk[dev] = clk
+        return clk
+
+    def note_clock(self, dev, ep, run, offset):
+        with self.lock:
+            self.clock_offsets(dev)[(ep, run & 0xFF)] = offset
+
     def add_samples(self, dev, ep, dev_now, rx_unix, rx_iso, recs):
         """Append the new ones (by epoch + seq); returns the highest seq in the batch, or None if it was empty."""
         with self.lock:
@@ -125,6 +144,7 @@ class Store:
             if seen is None:
                 seen = {(r.get("ep"), r.get("seq")) for r in self.history(dev, suffix=".samples.jsonl")}
                 self.seen[dev] = seen
+            clk = self.clock_offsets(dev)
             top = None
             with open(self.path(dev, ".samples.jsonl"), "a") as f:
                 for r in recs:
@@ -133,10 +153,19 @@ class Store:
                     if (ep, seq) in seen:
                         continue
                     seen.add((ep, seq))
-                    unix = rx_unix - (dev_now - t)
                     row = decode_record(r)
-                    row.update({"time": datetime.fromtimestamp(round(unix), timezone.utc).astimezone().isoformat(timespec="seconds"),
-                                "t_dev": t, "ep": ep, "unix": round(unix, 1), "rx_time": rx_iso})
+                    if len(r) >= 20:                     # rv 3: time it from an upload in its own clock run
+                        run = int(r[19])
+                        off = clk.get((ep, run))
+                        unix = None if off is None else off + t
+                        row["run"] = run
+                    else:
+                        unix = rx_unix - (dev_now - t)
+                    if unix is None:
+                        row["flag_names"] = (row.get("flag_names", "") + " time-unknown").strip()
+                    row.update({"time": "" if unix is None else
+                                datetime.fromtimestamp(round(unix), timezone.utc).astimezone().isoformat(timespec="seconds"),
+                                "t_dev": t, "ep": ep, "unix": None if unix is None else round(unix, 1), "rx_time": rx_iso})
                     f.write(json.dumps(row, separators=(",", ":")) + "\n")
             return top
 
@@ -225,6 +254,9 @@ def make_handler(store, token):
                 rec["rx_time"] = now_iso()
                 rec["rx_ip"] = self.client_address[0]
                 reply = {"ok": True, "server_time": int(rx_unix)}
+                if "now" in rec and rec.get("run") is not None:   # rv 3: this upload times its clock run
+                    rec["clk_off"] = round(rx_unix - (float(rec["now"]) + float(rec.get("now_ms", 0)) / 1000), 1)
+                    store.note_clock(dev, rec.get("ep", 0), int(rec["run"]), rec["clk_off"])
                 if recs is not None:
                     rec["n_recs"] = len(recs)
                     if recs:

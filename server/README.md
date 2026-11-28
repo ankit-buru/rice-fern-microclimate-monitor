@@ -23,6 +23,10 @@ Logger firmware sends its stored samples with each upload, up to 24 per POST; th
 it can forget. Duplicates (a resend after a dropped connection) are dropped by epoch + sequence number. A board's
 clock only counts seconds since its cell was connected, so the server converts: real time = receive time - (board
 clock in the POST - board clock in the sample). Samples land in `data/<board id>.samples.jsonl`.
+A power cut (cell swap) restarts the board's clock and starts a new clock run (`run` in each POST and, from record
+layout 3, in each sample); `log` on the console shows it, and `log clear` starts a new epoch at run 1. The server
+times each sample from the latest upload in its own (epoch, run), so samples left unsent at a cell swap keep their
+real times; a run that never got an upload through leaves its samples with an empty `time` and `time-unknown`.
 
 Logger-2 records carry the Qwiic sensors as raw counts; the server adds real units: `temp_c` / `rh_pct` (AHT20),
 `lux` (VEML7700), `uva_uw_cm2` / `uvb_uw_cm2` / `uvc_uw_cm2` (AS7331). Light and UV are measured twice per sample,

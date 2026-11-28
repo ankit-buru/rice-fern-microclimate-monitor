@@ -15,7 +15,8 @@ typedef struct {
   int16_t  mcu_dc;                 // MCU temperature, 0.1 C
   sensors_t s;                     // Qwiic sensors, raw (sensors.h); s.status says which answered
   uint8_t  flags;                  // REC_*
-  uint8_t  pad[2];
+  uint8_t  run;                    // clock run (store_run(), low 8 bits) when sampled: t counts from that run's start
+  uint8_t  pad;
   uint8_t  crc;                    // CRC-8 of the bytes before it: a record cut short by a reset reads as empty
 } rec_t;
 
@@ -36,5 +37,7 @@ uint32_t store_first_unsent(void); // oldest record still worth sending (store_n
 uint32_t store_unsent(void);
 void     store_ack(uint32_t seq);  // the server confirmed everything up to seq
 uint32_t store_epoch(void);        // changes on every wipe: (epoch, seq) is unique for this board
+uint32_t store_run(void);          // clock run: +1 each time the device clock restarts from 0 (a power cut), 1 after a
+                                   // wipe. The server times a record from an upload made in the same (epoch, run).
 unsigned store_capacity(void);
 void     store_clear(void);

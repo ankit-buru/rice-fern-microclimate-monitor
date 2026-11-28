@@ -392,18 +392,18 @@ static void cmd_sample(char *a) { sample_take(); }
 static void cmd_sens(char *a) { sensors_t v; sensors_read(&v); sensors_print(&v); }
 
 static void cmd_log(char *a) {
-  if (a && !strcmp(a, "clear")) { store_clear(); cprintf("store cleared (epoch now %lu)\n", (unsigned long)store_epoch()); return; }
+  if (a && !strcmp(a, "clear")) { store_clear(); cprintf("store cleared (epoch now %lu, clock run 1)\n", (unsigned long)store_epoch()); return; }
   uint32_t newest = store_newest();
-  cprintf("records: newest %lu, server has up to %lu, %lu waiting, room for %u (epoch %lu). Device clock %lu s.\n",
-          (unsigned long)newest, (unsigned long)store_acked(), (unsigned long)store_unsent(), store_capacity(),
-          (unsigned long)store_epoch(), (unsigned long)hw_clock_s());
+  cprintf("records: newest %lu, server has up to %lu, %lu waiting, room for %u (epoch %lu). Device clock %lu s, "
+          "clock run %lu.\n", (unsigned long)newest, (unsigned long)store_acked(), (unsigned long)store_unsent(),
+          store_capacity(), (unsigned long)store_epoch(), (unsigned long)hw_clock_s(), (unsigned long)store_run());
   int n = arg_int(a, 8);
   uint32_t q = newest > (uint32_t)n ? newest - (uint32_t)n + 1u : 1u;
   for (; q && q <= newest; q++) {
     rec_t r;
     if (!store_get(q, &r)) { cprintf("  %6lu  (missing)\n", (unsigned long)q); continue; }
     int t = r.mcu_dc;
-    cprintf("  %6lu  t %8lu  cell %4u mV  MCU %s%d.%d C  flags 0x%02X  sensors 0x%02X%s\n", (unsigned long)r.seq,
+    cprintf("  %6lu  run %3u  t %8lu  cell %4u mV  MCU %s%d.%d C  flags 0x%02X  sensors 0x%02X%s\n", (unsigned long)r.seq, r.run,
             (unsigned long)r.t, r.vcell_mv, t < 0 ? "-" : "", (t < 0 ? -t : t) / 10, (t < 0 ? -t : t) % 10, r.flags, r.s.status,
             r.seq <= store_acked() ? "" : "  (not sent)");
   }

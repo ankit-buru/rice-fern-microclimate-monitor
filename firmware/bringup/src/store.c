@@ -12,7 +12,7 @@
 _Static_assert(sizeof(rec_t) == 44, "rec_t layout");
 _Static_assert(sizeof(config_t) <= 0x80, "config_t would overlap the store header");
 
-typedef struct { uint32_t magic, acked, epoch, spare; } hdr_t;   // acked: rewritten once per upload (100k cycles: decades)
+typedef struct { uint32_t magic, acked, epoch, run; } hdr_t;   // acked: rewritten once per upload (100k cycles: decades)
 
 static hdr_t hdr;
 static uint32_t newest;
@@ -31,6 +31,7 @@ unsigned store_capacity(void) { return STORE_CAP; }
 uint32_t store_newest(void) { return newest; }
 uint32_t store_acked(void) { return hdr.acked; }
 uint32_t store_epoch(void) { return hdr.epoch; }
+uint32_t store_run(void) { return hdr.run; }
 
 void store_clear(void) {
   uint32_t zero = 0;
@@ -39,7 +40,7 @@ void store_clear(void) {
     if (*(volatile uint32_t *)a) hw_eeprom_write(a, &zero, 4);
   }
   hdr_t old; memcpy(&old, (const void *)HDR_ADDR, sizeof old);
-  hdr.magic = STORE_MAGIC; hdr.acked = 0; hdr.spare = 0;
+  hdr.magic = STORE_MAGIC; hdr.acked = 0; hdr.run = 1;
   hdr.epoch = ((old.magic & 0xFFFF0000u) == 0x53540000u ? old.epoch : hw_clock_s()) + 1u;   // any layout: new epoch
   hw_eeprom_write(HDR_ADDR, &hdr, sizeof hdr);
   newest = 0;
@@ -54,10 +55,13 @@ void store_init(void) {
     if (slot_valid(&r) && (r.seq - 1u) % STORE_CAP == i && r.seq > newest) newest = r.seq;
   }
   if (hdr.acked > newest) hdr.acked = newest;                 // can't have acked what isn't there
+  if (hw_clock_fresh()) { hdr.run++; hw_eeprom_write(HDR_ADDR, &hdr, sizeof hdr); }   // call after hw_clock_init()
 }
 
 uint32_t store_append(rec_t *r) {
   r->seq = newest + 1u;
+  r->run = (uint8_t)hdr.run;
+  r->pad = 0;
   r->crc = crc8((const uint8_t *)r, sizeof *r - 1);
   if (!hw_eeprom_write(slot_addr(r->seq), r, sizeof *r)) return 0;
   return newest = r->seq;
